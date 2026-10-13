@@ -1,208 +1,357 @@
-import { createWorkersAI } from "workers-ai-provider";
-import { callable, routeAgentRequest, type Schedule } from "agents";
-import { getSchedulePrompt, scheduleSchema } from "agents/schedule";
-import { AIChatAgent, type OnChatMessageOptions } from "@cloudflare/ai-chat";
+import { Agent, routeAgentRequest } from "agents";
 import {
-  convertToModelMessages,
-  pruneMessages,
-  stepCountIs,
-  streamText,
-  tool
-} from "ai";
-import { z } from "zod";
+  withVoice,
+  WorkersAIFluxSTT,
+  type VoiceTurnContext
+} from "@cloudflare/voice";
+import {
+  AIChatAgent,
+  type OnChatMessageOptions
+} from "@cloudflare/ai-chat";
+import { createWorkersAI } from "workers-ai-provider";
+import { convertToModelMessages, streamText } from "ai";
+
+// ── 模型設定 ──────────────────────────────────────────
+
+const CHAT_MODEL = "@cf/moonshotai/kimi-k2.7-code";
+const TTS_MODEL = "@cf/deepgram/aura-2-en";
+
+// ── 文字聊天 ──────────────────────────────────────────
 
 export class ChatAgent extends AIChatAgent<Env> {
-  maxPersistedMessages = 100;
-  chatRecovery = true;
-  // Wait for MCP connections to be re-established after hibernation before
-  // processing a message, so MCP tools aren't intermittently missing.
-  waitForMcpConnections = true;
-
-  onStart() {
-    // Configure OAuth popup behavior for MCP servers that require authentication
-    this.mcp.configureOAuthCallback({
-      customHandler: (result) => {
-        if (result.authSuccess) {
-          return new Response("<script>window.close();</script>", {
-            headers: { "content-type": "text/html" },
-            status: 200
-          });
-        }
-        return new Response(
-          `Authentication Failed: ${result.authError || "Unknown error"}`,
-          { headers: { "content-type": "text/plain" }, status: 400 }
-        );
-      }
+  async onChatMessage(
+    _onFinish: unknown,
+    options?: OnChatMessageOptions
+  ) {
+    const workersai = createWorkersAI({
+      binding: this.env.AI
     });
-  }
-
-  @callable()
-  async addServer(name: string, url: string) {
-    return await this.addMcpServer(name, url);
-  }
-
-  @callable()
-  async removeServer(serverId: string) {
-    await this.removeMcpServer(serverId);
-  }
-
-  async onChatMessage(_onFinish: unknown, options?: OnChatMessageOptions) {
-    const mcpTools = this.mcp.getAITools();
-    const workersai = createWorkersAI({ binding: this.env.AI });
 
     const result = streamText({
-      model: workersai("@cf/moonshotai/kimi-k2.7-code", {
-        sessionAffinity: this.sessionAffinity
-      }),
-      system: `You are a helpful assistant that can understand images. You can check the weather, get the user's timezone, run calculations, and schedule tasks. When users share images, describe what you see and answer questions about them.
-
-${getSchedulePrompt({ date: new Date() })}
-
-If the user asks to schedule a task, use the schedule tool to schedule the task.`,
-      // Prune old tool calls and reasoning to save tokens on long conversations
-      messages: pruneMessages({
-        messages: await convertToModelMessages(this.messages),
-        toolCalls: "before-last-2-messages",
-        reasoning: "before-last-message"
-      }),
-      tools: {
-        // MCP tools from connected servers
-        ...mcpTools,
-
-        // Server-side tool: runs automatically on the server
-        getWeather: tool({
-          description: "Get the current weather for a city",
-          inputSchema: z.object({
-            city: z.string().describe("City name")
-          }),
-          execute: async ({ city }) => {
-            // Replace with a real weather API in production
-            const conditions = ["sunny", "cloudy", "rainy", "snowy"];
-            const temp = Math.floor(Math.random() * 30) + 5;
-            return {
-              city,
-              temperature: temp,
-              condition:
-                conditions[Math.floor(Math.random() * conditions.length)],
-              unit: "celsius"
-            };
-          }
-        }),
-
-        // Client-side tool: no execute function — the browser handles it
-        getUserTimezone: tool({
-          description:
-            "Get the user's timezone from their browser. Use this when you need to know the user's local time.",
-          inputSchema: z.object({})
-        }),
-
-        // Approval tool: requires user confirmation before executing
-        calculate: tool({
-          description:
-            "Perform a math calculation with two numbers. Requires user approval for large numbers.",
-          inputSchema: z.object({
-            a: z.number().describe("First number"),
-            b: z.number().describe("Second number"),
-            operator: z
-              .enum(["+", "-", "*", "/", "%"])
-              .describe("Arithmetic operator")
-          }),
-          needsApproval: async ({ a, b }) =>
-            Math.abs(a) > 1000 || Math.abs(b) > 1000,
-          execute: async ({ a, b, operator }) => {
-            const ops: Record<string, (x: number, y: number) => number> = {
-              "+": (x, y) => x + y,
-              "-": (x, y) => x - y,
-              "*": (x, y) => x * y,
-              "/": (x, y) => x / y,
-              "%": (x, y) => x % y
-            };
-            if (operator === "/" && b === 0) {
-              return { error: "Division by zero" };
-            }
-            return {
-              expression: `${a} ${operator} ${b}`,
-              result: ops[operator](a, b)
-            };
-          }
-        }),
-
-        scheduleTask: tool({
-          description:
-            "Schedule a task to be executed at a later time. Use this when the user asks to be reminded or wants something done later.",
-          inputSchema: scheduleSchema,
-          execute: async ({ when, description }) => {
-            if (when.type === "no-schedule") {
-              return "Not a valid schedule input";
-            }
-            const input =
-              when.type === "scheduled"
-                ? when.date
-                : when.type === "delayed"
-                  ? when.delayInSeconds
-                  : when.type === "cron"
-                    ? when.cron
-                    : null;
-            if (!input) return "Invalid schedule type";
-            try {
-              this.schedule(input, "executeTask", description, {
-                idempotent: true
-              });
-              return `Task scheduled: "${description}" (${when.type}: ${input})`;
-            } catch (error) {
-              return `Error scheduling task: ${error}`;
-            }
-          }
-        }),
-
-        getScheduledTasks: tool({
-          description: "List all tasks that have been scheduled",
-          inputSchema: z.object({}),
-          execute: async () => {
-            const tasks = this.getSchedules();
-            return tasks.length > 0 ? tasks : "No scheduled tasks found.";
-          }
-        }),
-
-        cancelScheduledTask: tool({
-          description: "Cancel a scheduled task by its ID",
-          inputSchema: z.object({
-            taskId: z.string().describe("The ID of the task to cancel")
-          }),
-          execute: async ({ taskId }) => {
-            try {
-              this.cancelSchedule(taskId);
-              return `Task ${taskId} cancelled.`;
-            } catch (error) {
-              return `Error cancelling task: ${error}`;
-            }
-          }
-        })
-      },
-      stopWhen: stepCountIs(20),
+      model: workersai(CHAT_MODEL),
+      system: "You are a friendly assistant. Keep replies concise.",
+      messages: await convertToModelMessages(this.messages),
       abortSignal: options?.abortSignal
     });
 
     return result.toUIMessageStreamResponse();
   }
+}
 
-  async executeTask(description: string, _task: Schedule<string>) {
-    // Do the actual work here (send email, call API, etc.)
-    console.log(`Executing scheduled task: ${description}`);
+// ── 三隻小鳥的角色與音色 ────────────────────────────────
 
-    // Notify connected clients via a broadcast event.
-    // We use broadcast() instead of saveMessages() to avoid injecting
-    // into chat history — that would cause the AI to see the notification
-    // as new context and potentially loop.
-    this.broadcast(
-      JSON.stringify({
-        type: "scheduled-task",
-        description,
-        timestamp: new Date().toISOString()
-      })
+const BIRD_SETTINGS = {
+  sunny: {
+    name: "Sunny",
+    speaker: "asteria",
+    personality:
+      "You are a warm, patient little bird. " +
+      "Listen kindly and acknowledge feelings before offering advice. " +
+      "Offer gentle companionship without exaggerated praise."
+  },
+  chirpy: {
+    name: "Chirpy",
+    speaker: "luna",
+    personality:
+      "You are a playful, curious little bird. " +
+      "Bring gentle humor and enjoy small discoveries. " +
+      "Be considerate when the user is upset; do not force cheerfulness."
+  },
+  sage: {
+    name: "Sage",
+    speaker: "orion",
+    personality:
+      "You are a calm, thoughtful owl. " +
+      "Help the user organize thoughts and understand choices. " +
+      "Offer one small practical next step when advice is wanted."
+  }
+} as const;
+
+type BirdId = keyof typeof BIRD_SETTINGS;
+
+// ── 音訊轉換：處理不同的 Workers AI 回傳格式 ─────────────
+
+class BirdTTS {
+  constructor(
+  private ai: Env["AI"],
+  private speaker: (typeof BIRD_SETTINGS)[BirdId]["speaker"]
+  ) {}
+
+  async synthesize(
+    text: string,
+    signal?: AbortSignal
+  ): Promise<ArrayBuffer | null> {
+    if (!text.trim() || signal?.aborted) return null;
+
+    const output: unknown = await this.ai.run(
+      TTS_MODEL,
+      {
+        text,
+        speaker: this.speaker
+      },
+      {
+        returnRawResponse: true
+      }
     );
+
+    if (signal?.aborted) return null;
+
+    let audio: ArrayBuffer;
+
+    if (output instanceof Response) {
+      if (!output.ok) {
+        throw new Error(
+          `語音生成失敗：HTTP ${output.status}`
+        );
+      }
+
+      audio = await output.arrayBuffer();
+    } else if (output instanceof ReadableStream) {
+      audio = await new Response(output).arrayBuffer();
+    } else if (output instanceof ArrayBuffer) {
+      audio = output;
+    } else if (output instanceof Uint8Array) {
+      audio = new Uint8Array(output).buffer;
+    } else {
+      throw new Error(
+        "語音服務回傳了無法辨識的資料格式。"
+      );
+    }
+
+    return signal?.aborted ? null : audio;
   }
 }
+
+// ── 群聊音色：依字幕角色選擇聲音 ────────────────────────
+
+class GroupBirdTTS {
+  constructor(private ai: Env["AI"]) {}
+
+  async synthesize(
+    text: string,
+    signal?: AbortSignal
+  ): Promise<ArrayBuffer | null> {
+    if (signal?.aborted) return null;
+
+    const match = text.trim().match(
+      /^Speaker (Sunny|Chirpy|Sage):\s*([\s\S]+)$/
+    );
+
+    if (!match) {
+      throw new Error(
+        "群聊語音缺少角色名稱，請貼出終端機錯誤。"
+      );
+    }
+
+    const id = match[1].toLowerCase() as BirdId;
+    const spokenText = match[2].trim();
+
+    if (!spokenText) return null;
+
+    const provider = new BirdTTS(
+      this.ai,
+      BIRD_SETTINGS[id].speaker
+    );
+
+    // 角色名稱顯示在字幕裡，但不會被念出來。
+    return provider.synthesize(spokenText, signal);
+  }
+}
+
+// ── 單鳥與群聊語音 Agent ────────────────────────────────
+
+const VoiceAgentBase = withVoice(Agent, {
+  historyLimit: 8
+});
+
+export class BirdVoiceAgent extends VoiceAgentBase<Env> {
+  transcriber = new WorkersAIFluxSTT(this.env.AI);
+
+  tts: BirdTTS | GroupBirdTTS = new BirdTTS(
+    this.env.AI,
+    "asteria"
+  );
+
+  private getBirdId(): BirdId {
+    if (this.name.endsWith("--chirpy")) return "chirpy";
+    if (this.name.endsWith("--sage")) return "sage";
+
+    return "sunny";
+  }
+
+  beforeCallStart() {
+    if (this.name.endsWith("--group")) {
+      this.tts = new GroupBirdTTS(this.env.AI);
+    } else {
+      const bird = BIRD_SETTINGS[this.getBirdId()];
+
+      this.tts = new BirdTTS(
+        this.env.AI,
+        bird.speaker
+      );
+    }
+
+    return true;
+  }
+
+  async onTurn(
+    transcript: string,
+    context: VoiceTurnContext
+  ) {
+    if (this.name.endsWith("--group")) {
+      return this.groupReplies(transcript, context);
+    }
+
+    const bird = BIRD_SETTINGS[this.getBirdId()];
+
+    const workersai = createWorkersAI({
+      binding: this.env.AI
+    });
+
+    const result = streamText({
+      model: workersai(CHAT_MODEL),
+      system: `
+Your name is ${bird.name}.
+${bird.personality}
+
+You are an AI bird companion.
+When asked your name, say "${bird.name}".
+Your current identity overrides names in earlier conversation.
+Do not call yourself Little Sunny or another bird's name.
+
+Speak English in one short sentence, around 10 to 20 words.
+Respond directly without a long introduction.
+Ask at most one question.
+Use natural spoken language.
+Do not use Markdown, emojis, lists, or stage directions.
+Do not invent memories or facts.
+      `,
+      messages: [
+        ...context.messages.map((message) => ({
+          role: message.role as "user" | "assistant",
+          content: message.content
+        })),
+        {
+          role: "user" as const,
+          content: transcript
+        }
+      ],
+      abortSignal: context.signal
+    });
+
+    return result.textStream;
+  }
+
+  // 每輪兩隻鳥，依序回答；下一輪換組合。
+  private async *groupReplies(
+    transcript: string,
+    context: VoiceTurnContext
+  ): AsyncGenerator<string> {
+    const pairs: BirdId[][] = [
+      ["sunny", "sage"],
+      ["chirpy", "sage"],
+      ["sunny", "chirpy"]
+    ];
+
+    const previousTurns = context.messages.filter(
+      (message) => message.role === "user"
+    ).length;
+
+    const pair = pairs[previousTurns % pairs.length];
+
+    const workersai = createWorkersAI({
+      binding: this.env.AI
+    });
+
+    let previousReply = "";
+
+    for (const [index, id] of pair.entries()) {
+      if (context.signal.aborted) return;
+
+      const bird = BIRD_SETTINGS[id];
+
+      const instruction =
+        index === 0
+          ? "Respond directly to the user and leave room for another bird."
+          : `Another bird just said: ${previousReply}
+Add a different, useful perspective.
+Do not repeat that reply.
+Do not ask another question.`;
+
+      const result = streamText({
+        model: workersai(CHAT_MODEL),
+        system: `
+Your name is ${bird.name}.
+${bird.personality}
+
+You are an AI bird companion in a shared conversation.
+Your current identity overrides names in earlier messages.
+Speak English.
+Give exactly one short sentence, around 8 to 20 words.
+Do not write your name or a speaker label.
+Do not use Markdown, emojis, lists, or stage directions.
+Avoid abbreviations, URLs, and numbered lists.
+Do not invent memories or facts.
+
+${instruction}
+        `,
+        messages: [
+          ...context.messages.map((message) => ({
+            role: message.role as "user" | "assistant",
+            content: message.content
+          })),
+          {
+            role: "user" as const,
+            content: transcript
+          }
+        ],
+        abortSignal: context.signal
+      });
+
+      let buffer = "";
+      let fullReply = "";
+
+      for await (const token of result.textStream) {
+        if (context.signal.aborted) return;
+
+        buffer += token;
+        fullReply += token;
+
+        // 為每個完整句子加上角色標記。
+        while (true) {
+          const match = buffer.match(
+            /^([\s\S]*?[.!?])\s+/
+          );
+
+          if (!match) break;
+
+          const sentence = match[1].trim();
+          buffer = buffer.slice(match[0].length);
+
+          if (sentence) {
+            yield `Speaker ${bird.name}: ${sentence}\n`;
+          }
+        }
+      }
+
+      if (context.signal.aborted) return;
+
+      const remaining = buffer.trim();
+
+      if (remaining) {
+        const ending = /[.!?]$/.test(remaining)
+          ? ""
+          : ".";
+
+        yield `Speaker ${bird.name}: ${remaining}${ending}\n`;
+      }
+
+      previousReply = `${bird.name}: ${fullReply.trim()}`;
+    }
+  }
+}
+
+// ── 請求路由 ──────────────────────────────────────────
 
 export default {
   async fetch(request: Request, env: Env) {
