@@ -1,3 +1,5 @@
+import { characterFromSession } from "./characters";
+import { characterAgentConfig } from "./character-config.server";
 import { Agent, routeAgentRequest } from "agents";
 import {
   withVoice,
@@ -41,30 +43,12 @@ export class ChatAgent extends AIChatAgent<Env> {
 // ── 三隻小鳥的角色與音色 ────────────────────────────────
 
 const BIRD_SETTINGS = {
-  sunny: {
-    name: "Sunny",
-    speaker: "asteria",
-    personality:
-      "You are a warm, patient little bird. " +
-      "Listen kindly and acknowledge feelings before offering advice. " +
-      "Offer gentle companionship without exaggerated praise."
-  },
-  chirpy: {
-    name: "Chirpy",
-    speaker: "luna",
-    personality:
-      "You are a playful, curious little bird. " +
-      "Bring gentle humor and enjoy small discoveries. " +
-      "Be considerate when the user is upset; do not force cheerfulness."
-  },
-  sage: {
-    name: "Sage",
-    speaker: "orion",
-    personality:
-      "You are a calm, thoughtful owl. " +
-      "Help the user organize thoughts and understand choices. " +
-      "Offer one small practical next step when advice is wanted."
-  }
+  sunny: { name: "Sunny", speaker: characterAgentConfig.sparrow.voice.id,
+    personality: characterAgentConfig.sparrow.persona },
+  chirpy: { name: "Chirpy", speaker: characterAgentConfig.pigeon.voice.id,
+    personality: characterAgentConfig.pigeon.persona },
+  sage: { name: "Sage", speaker: characterAgentConfig["malayan-night-heron"].voice.id,
+    personality: characterAgentConfig["malayan-night-heron"].persona }
 } as const;
 
 type BirdId = keyof typeof BIRD_SETTINGS;
@@ -173,14 +157,40 @@ export class BirdVoiceAgent extends VoiceAgentBase<Env> {
   );
 
   private getBirdId(): BirdId {
+    const characterId = characterFromSession(this.name);
+    if (characterId) return characterAgentConfig[characterId].legacyId;
     if (this.name.endsWith("--chirpy")) return "chirpy";
     if (this.name.endsWith("--sage")) return "sage";
 
     return "sunny";
   }
 
+  private ensureCharacterState() {
+    const id = characterFromSession(this.name);
+    if (!id) return;
+    const config = characterAgentConfig[id];
+    this.sql`CREATE TABLE IF NOT EXISTS cf_character_state (
+      character_id TEXT PRIMARY KEY,
+      voice_id TEXT NOT NULL,
+      language TEXT NOT NULL,
+      call_count INTEGER NOT NULL DEFAULT 0,
+      turn_count INTEGER NOT NULL DEFAULT 0
+    )`;
+    this.sql`INSERT INTO cf_character_state (character_id, voice_id, language)
+      VALUES (${id}, ${config.voice.id}, ${config.language})
+      ON CONFLICT(character_id) DO UPDATE SET
+        voice_id=excluded.voice_id, language=excluded.language`;
+  }
+
   beforeCallStart() {
-    if (this.name.endsWith("--group")) {
+    this.ensureCharacterState();
+    const characterId = characterFromSession(this.name);
+    if (characterId) {
+      const config = characterAgentConfig[characterId];
+      this.tts = new BirdTTS(this.env.AI, config.voice.id);
+      this.sql`UPDATE cf_character_state SET call_count=call_count+1
+        WHERE character_id=${characterId}`;
+    } else if (this.name.endsWith("--group")) {
       this.tts = new GroupBirdTTS(this.env.AI);
     } else {
       const bird = BIRD_SETTINGS[this.getBirdId()];
@@ -202,7 +212,16 @@ export class BirdVoiceAgent extends VoiceAgentBase<Env> {
       return this.groupReplies(transcript, context);
     }
 
-    const bird = BIRD_SETTINGS[this.getBirdId()];
+    const characterId = characterFromSession(this.name);
+    this.ensureCharacterState();
+    if (characterId) {
+      this.sql`UPDATE cf_character_state SET turn_count=turn_count+1
+        WHERE character_id=${characterId}`;
+    }
+    const config = characterId ? characterAgentConfig[characterId] : null;
+    const bird = config
+      ? { name: config.name, speaker: config.voice.id, personality: config.persona }
+      : BIRD_SETTINGS[this.getBirdId()];
 
     const workersai = createWorkersAI({
       binding: this.env.AI

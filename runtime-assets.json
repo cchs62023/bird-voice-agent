@@ -1,0 +1,27 @@
+{
+  "status": "generated-preview",
+  "description": "Derived front-three-quarter idle poses. Not animation frames. Original references preserved unmodified.",
+  "characters": {
+    "sparrow": {
+      "idle": "/characters/sparrow/idle.png",
+      "listening": null,
+      "thinking": null,
+      "speaking": null,
+      "state_display": "same idle pose with CSS state indicator; no lip sync"
+    },
+    "pigeon": {
+      "idle": "/characters/pigeon/idle.png",
+      "listening": null,
+      "thinking": null,
+      "speaking": null,
+      "state_display": "same idle pose with CSS state indicator; no lip sync"
+    },
+    "malayan-night-heron": {
+      "idle": "/characters/malayan-night-heron/idle.png",
+      "listening": null,
+      "thinking": null,
+      "speaking": null,
+      "state_display": "same idle pose with CSS state indicator; no lip sync"
+    }
+  }
+}

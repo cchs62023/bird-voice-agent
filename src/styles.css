@@ -1,13 +1,56 @@
 @import "tailwindcss";
-@import "@cloudflare/kumo/styles/tailwind";
-@source "../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
-@source "../node_modules/streamdown/dist/*.js";
-@source "../node_modules/@streamdown/code/dist/*.js";
-
-html,
-body,
-#root {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-}
+:root { font-family: "Noto Sans TC", "PingFang TC", system-ui, sans-serif; color: #494638; background: #f7f5ec; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+button { font: inherit; cursor: pointer; }
+button:disabled { opacity: .5; cursor: wait; }
+button:focus-visible { outline: 3px solid #637b55; outline-offset: 5px; }
+.bird-app { min-height: 100vh; background: radial-gradient(ellipse at top, #eef1e3 0%, #f7f5ec 65%); padding: 56px 24px 24px; }
+.bird-shell { max-width: 1060px; margin: auto; }
+.bird-header { text-align: center; margin-bottom: 34px; }
+.eyebrow { font-size: 11px; letter-spacing: .2em; color: #7c8169; }
+.bird-header h1 { font-family: Georgia, "Noto Serif TC", serif; font-size: clamp(32px, 5vw, 48px); font-weight: 500; margin: 12px 0 16px; }
+.bird-header p { color: #75735f; line-height: 1.8; }
+.language-note { display: inline-block; font-size: 12px; margin-top: 12px; color: #8a8775; }
+.character-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.character-card { border: 1px solid #dedfce; border-radius: 24px; background: #ffffff96; padding: 12px 20px 22px; display: flex; flex-direction: column; align-items: center; position: relative; transition: background .2s, border-color .2s; color: inherit; }
+.character-card.is-selected { border: 2px solid #7c8b66; background: #fffdf4; padding: 11px 19px 21px; }
+.character-art { height: 240px; width: 100%; display: flex; align-items: center; justify-content: center; }
+.character-art img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.character-species { font-size: 12px; color: #89816b; margin: 4px 0 3px; }
+.character-card strong { font: 500 24px Georgia, serif; }
+.phase-label { margin-top: 12px; border-radius: 20px; background: #f0f0e6; color: #86816f; font-size: 11px; padding: 5px 12px; }
+.phase-label.is-speaking { background: #dce9d3; color: #405d36; }
+.phase-speaking .character-art { animation: breath 1.4s ease-in-out infinite; }
+.phase-thinking { border-style: dashed; }
+.mode-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 18px 4px 26px; font-size: 12px; color: #8a8777; }
+.quiet-button { background: transparent; border: 0; color: #6d785e; padding: 10px 12px; text-decoration: underline; text-underline-offset: 4px; font-size: 13px; }
+.quiet-button[aria-pressed="true"] { color: #344d2e; font-weight: 700; }
+.conversation { border: 1px solid #e1dfd2; background: #fffef9; border-radius: 24px; padding: 28px 32px; }
+.conversation-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.conversation h2 { font-size: 22px; font-weight: 500; margin: 6px 0; }
+.connection { font-size: 12px; color: #aaa18b; white-space: nowrap; }
+.connection::before { content: ""; display: inline-block; width: 6px; height: 6px; background: #bbb4a4; border-radius: 50%; margin-right: 7px; }
+.connection.online::before { background: #7a9862; }
+.call-status { text-align: center; color: #7b7e66; margin: 24px 0 16px; font-size: 13px; }
+.call-actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; }
+.primary-button, .secondary-button { border-radius: 30px; padding: 12px 24px; border: 1px solid #6f805b; background: #6f805b; color: #fff; font-size: 14px; }
+.secondary-button { background: transparent; color: #6f805b; }
+.conversation-hint { text-align: center; margin: 16px 0 28px; font-size: 12px; color: #9a9382; }
+.transcript { border-top: 1px solid #eeece1; padding-top: 18px; max-height: 360px; overflow-y: auto; }
+.empty-transcript { text-align: center; font-size: 13px; color: #aaa18b; padding: 14px; }
+.message { border-radius: 14px; background: #f1f3e8; margin: 12px 0; padding: 12px 16px; max-width: 90%; }
+.message-user { background: #f4eee1; margin-left: auto; }
+.message strong { display: block; font-size: 11px; color: #89806d; margin-bottom: 4px; }
+.message p { margin: 0; font-size: 14px; line-height: 1.7; white-space: pre-wrap; }
+.interim, .group-note { font-size: 12px; color: #8c866f; margin-top: 14px; }
+.error-message { border-radius: 12px; padding: 12px; background: #fff0e9; color: #954833; font-size: 13px; margin-top: 18px; }
+.error-message button { margin-left: 12px; text-decoration: underline; }
+footer { text-align: center; font-size: 11px; color: #a29b87; margin: 24px 0 8px; }
+.reference-backdrop { position: fixed; inset: 0; background: #33382ec7; display: grid; place-items: center; padding: 20px; z-index: 20; }
+.reference-dialog { background: #fffdf7; border-radius: 20px; max-width: 1100px; max-height: 95vh; overflow: auto; padding: 20px; text-align: center; }
+.reference-dialog img { display: block; width: 100%; height: auto; margin: 16px 0; }
+.reference-dialog p { font-size: 12px; color: #8a806b; }
+@keyframes breath { 50% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .phase-speaking .character-art { animation: none; } }
+@media (max-width: 640px) { .bird-app { padding: 30px 12px 18px; } .character-grid { gap: 8px; } .character-card { padding: 10px 6px 16px; border-radius: 16px; } .character-card.is-selected { padding: 9px 5px 15px; } .character-art { height: 150px; } .character-card strong { font-size: 20px; } .character-species { font-size: 10px; } .conversation { padding: 20px 16px; } .mode-row { align-items: flex-start; } }
