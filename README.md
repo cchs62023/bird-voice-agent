@@ -119,3 +119,7 @@ the following manual acceptance check on your authenticated Mac before deploying
 
 Deployment is a separate action. This change does not deploy, migrate, delete or
 publish any existing conversation data.
+# Character motion
+
+The supplied single-pose artwork now has CSS depth, soft ground shadows and subtle body gestures. Sunny sways, Chirpy makes small hops and Sage nods slowly. The existing per-character audio playback state selects speaking, listening and thinking gestures; these are body movements, not mouth animation or phoneme lip sync. Other birds lean toward an active individual speaker. Group audio does not yet expose its active speaker to these individual cards. Reduced-motion preferences disable the gestures. No new model calls are required.
+

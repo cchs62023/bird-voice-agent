@@ -1,0 +1,28 @@
+/* Depth and body gestures preserve the supplied single-pose artwork. */
+.character-grid { perspective: 1000px; }
+.character-card { --motion-period: 5.8s; --gesture: 1deg; --lift: -3px; transform-style: preserve-3d; }
+.character-card:nth-child(2) { --motion-period: 4.7s; --gesture: 1.7deg; --lift: -5px; }
+.character-card:nth-child(3) { --motion-period: 7s; --gesture: .65deg; --lift: -2px; }
+.character-art { position: relative; isolation: isolate; transform-style: preserve-3d; }
+.character-art::after { content: ''; position: absolute; z-index: -1; width: 38%; height: 9px; bottom: 12%; left: 31%; background: #665d4330; border-radius: 50%; filter: blur(7px); transform: rotateX(65deg); animation: bird-shadow var(--motion-period) ease-in-out infinite; }
+.character-art img { transform-origin: 50% 84%; filter: drop-shadow(2px 7px 3px #544c3710); animation: bird-rest var(--motion-period) ease-in-out infinite; will-change: transform; }
+.character-card:nth-child(2) .character-art img { animation-delay: -.9s; }
+.character-card:nth-child(3) .character-art img { animation-delay: -2.6s; }
+.phase-speaking .character-art { animation: none; }
+.phase-speaking .character-art img { animation: bird-talk 1.65s ease-in-out infinite; }
+.character-card:nth-child(2).phase-speaking .character-art img { animation: bird-chirp 1.8s ease-in-out infinite; }
+.character-card:nth-child(3).phase-speaking .character-art img { animation: bird-nod 2.9s ease-in-out infinite; }
+.phase-listening .character-art img { animation: bird-listen 5.5s ease-in-out infinite; }
+.phase-thinking .character-art img { animation: bird-think 4s ease-in-out infinite; }
+.character-grid:has(.phase-speaking) .character-card:not(.phase-speaking) .character-art { transform: rotateY(-5deg) rotateZ(-1deg); transition: transform 800ms ease; }
+.character-grid:has(.phase-speaking) .character-card:first-child:not(.phase-speaking) .character-art { transform: rotateY(5deg) rotateZ(1deg); }
+.character-card:hover { background-color: #fffdf4; }
+@keyframes bird-rest { 0%,100% { transform: translateY(0) rotateZ(calc(var(--gesture) * -1)); } 50% { transform: translateY(var(--lift)) rotateZ(var(--gesture)) scale(1.008); } }
+@keyframes bird-talk { 0%,100% { transform: translateY(0) rotateZ(-1deg); } 24% { transform: translateY(-4px) rotateZ(1.2deg) rotateY(5deg); } 52% { transform: translateY(-1px) rotateZ(-.5deg); } 77% { transform: translateY(-3px) rotateZ(.8deg); } }
+@keyframes bird-chirp { 0%,60%,100% { transform: translateY(0) rotateZ(-1deg); } 16% { transform: translateY(-8px) rotateZ(2deg) scale(1.015); } 34% { transform: translateY(0) rotateZ(0); } 43% { transform: translateY(-3px) rotateZ(-1.5deg); } }
+@keyframes bird-nod { 0%,100% { transform: rotateZ(-.5deg); } 25% { transform: rotateX(7deg) rotateZ(1deg) translateY(2px); } 50% { transform: rotateX(0) rotateZ(.5deg) translateY(-2px); } 73% { transform: rotateX(4deg) rotateZ(-.5deg); } }
+@keyframes bird-listen { 0%,100% { transform: rotateZ(-1.5deg) rotateY(3deg); } 45%,65% { transform: rotateZ(1.5deg) rotateY(-3deg) translateY(-2px); } }
+@keyframes bird-think { 0%,100% { transform: rotateZ(-2deg) translateY(0); } 50% { transform: rotateZ(-.5deg) translateY(-3px) rotateY(6deg); } }
+@keyframes bird-shadow { 0%,100% { opacity: .8; transform: rotateX(65deg) scaleX(1); } 50% { opacity: .55; transform: rotateX(65deg) scaleX(.9); } }
+@media (prefers-reduced-motion: reduce) { .character-card .character-art, .character-card .character-art img, .character-art::after { animation: none !important; transition: none !important; transform: none !important; } }
+.motion-paused .character-art, .motion-paused .character-art img, .motion-paused .character-art::after { animation: none !important; transition: none !important; transform: none !important; }

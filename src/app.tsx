@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { characters, characterSessionName, type CharacterId } from "./characters";
 import { CharacterSession } from "./voice/session";
+import "./character-motion.css";
 
 type Selection = CharacterId | "group";
 const nicknames: Record<CharacterId, string> = { sparrow: "Sunny", pigeon: "Chirpy", "malayan-night-heron": "Sage" };
