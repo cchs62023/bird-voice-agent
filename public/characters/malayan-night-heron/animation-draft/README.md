@@ -1,11 +1,13 @@
 # Sage frame animation sample
 
-Twelve newly drawn frames show a head turn, blink, attentive hold and return. Original turnaround and idle artwork remain unchanged. Body artwork is not rotated with CSS. Cells are cropped from transparent gutters and translated to a shared foot baseline without warping the drawing.
+Twelve drawn frames show a head turn, blink, attentive hold and return. Original turnaround and idle artwork remain unchanged.
 
-- `listen-atlas.webp`: 4 columns by 3 rows, each cell 384 px square.
-- `listen-preview.webp`: smaller atlas embedded in the offline preview.
-- `sage-listen.gif`: cream-background, shared-palette animated preview.
-- `manifest.json`: per-frame timing and registration metadata.
-- `sage-animation-preview.html` in the project root: offline, self-contained playback, frame selection, loop, speed, pause and reduced-motion support.
+Revision: planted-lower-body-v2. The previous sheet aligned foot height but still had horizontal drift and changing toe shapes. The frames now register horizontal foot anchors and share frame zero below row 256. Rows 224 to 256 provide a torso overlap; only the upper body and head animate. No whole-image rotation, leg warping or regenerated feet are used. PNG and GIF lower-body pixels are identical across all twelve frames. The canvas preview also reuses the same lower-body crop after atlas compression.
 
-Status: review sample. Small contour changes remain between generated frames. No microphone, model calls, speech or mouth synchronization are enabled. The animation is not yet connected to the voice runtime. Full-resolution source PNGs are retained in the authoring workspace.
+- `listen-atlas.webp`: 4 columns by 3 rows, 384 px cells.
+- `listen-preview.webp`: smaller embedded preview atlas.
+- `sage-listen.gif`: shared-palette, cream-background animation with identical planted feet.
+- `manifest.json`: frame timing, original registration and stabilization metadata.
+- `sage-animation-preview.html`: offline preview in the project root, with playback, frame selection, speed and reduced-motion controls.
+
+Status: review sample, not connected to the voice runtime. No microphone, model calls, mouth animation or speech synchronization. Full-resolution source PNGs and the previous atlas are retained in the authoring workspace.

@@ -32,7 +32,7 @@
   "mouthAnimation": false,
   "approvedForRuntime": false,
   "registration": {
-    "method": "Slice transparent row gutters, translate only, feet baseline y=364. No artwork warping.",
+    "method": "Original row-gutter registration, then horizontal foot-anchor registration and a shared static lower-body layer.",
     "sourceRowCuts": [
       0,
       375,
@@ -198,5 +198,28 @@
       }
     ]
   },
-  "notes": "Review sample, not enabled in the voice runtime. Small contour changes remain between generated drawings."
+  "notes": "All source PNG and GIF pixels below row 256 are identical across 12 frames. Upper-body drawings retain their natural contour differences. Not enabled in voice runtime.",
+  "revision": "planted-lower-body-v2",
+  "compositing": {
+    "offsets": [
+      0,
+      16,
+      32,
+      31,
+      1,
+      15,
+      29,
+      27,
+      0,
+      15,
+      29,
+      29
+    ],
+    "lowerBodyReference": 0,
+    "blendRows": [
+      224,
+      256
+    ],
+    "fixedFromY": 256
+  }
 }
