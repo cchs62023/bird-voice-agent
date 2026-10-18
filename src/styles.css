@@ -21,7 +21,6 @@ button:focus-visible { outline: 3px solid #637b55; outline-offset: 5px; }
 .character-card strong { font: 500 24px Georgia, serif; }
 .phase-label { margin-top: 12px; border-radius: 20px; background: #f0f0e6; color: #86816f; font-size: 11px; padding: 5px 12px; }
 .phase-label.is-speaking { background: #dce9d3; color: #405d36; }
-.phase-speaking .character-art { animation: breath 1.4s ease-in-out infinite; }
 .phase-thinking { border-style: dashed; }
 .mode-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 18px 4px 26px; font-size: 12px; color: #8a8777; }
 .quiet-button { background: transparent; border: 0; color: #6d785e; padding: 10px 12px; text-decoration: underline; text-underline-offset: 4px; font-size: 13px; }
@@ -51,6 +50,4 @@ footer { text-align: center; font-size: 11px; color: #a29b87; margin: 24px 0 8px
 .reference-dialog { background: #fffdf7; border-radius: 20px; max-width: 1100px; max-height: 95vh; overflow: auto; padding: 20px; text-align: center; }
 .reference-dialog img { display: block; width: 100%; height: auto; margin: 16px 0; }
 .reference-dialog p { font-size: 12px; color: #8a806b; }
-@keyframes breath { 50% { transform: translateY(-3px); } }
-@media (prefers-reduced-motion: reduce) { .phase-speaking .character-art { animation: none; } }
 @media (max-width: 640px) { .bird-app { padding: 30px 12px 18px; } .character-grid { gap: 8px; } .character-card { padding: 10px 6px 16px; border-radius: 16px; } .character-card.is-selected { padding: 9px 5px 15px; } .character-art { height: 150px; } .character-card strong { font-size: 20px; } .character-species { font-size: 10px; } .conversation { padding: 20px 16px; } .mode-row { align-items: flex-start; } }

@@ -1,5 +1,5 @@
 {
-  "status": "draft-for-review",
+  "status": "approved-and-connected",
   "character": "malayan-night-heron",
   "name": "Sage",
   "source": "Twelve newly generated in-between drawings; original turnaround is unchanged.",
@@ -30,7 +30,7 @@
     "listening"
   ],
   "mouthAnimation": false,
-  "approvedForRuntime": false,
+  "approvedForRuntime": true,
   "registration": {
     "method": "Original row-gutter registration, then horizontal foot-anchor registration and a shared static lower-body layer.",
     "sourceRowCuts": [

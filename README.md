@@ -61,9 +61,12 @@ Local `.wrangler` SQLite data and deployed Durable Object data are separate.
 transcripts. `CharacterTransport` implements its documented custom-transport
 contract and directs response audio to the application's observable playback queue.
 
+- `listening` follows accepted call/listening status, interim speech and microphone activity. Muted, inactive sessions rest.
 - `thinking` follows model processing, never text masquerading as speech.
 - `speaking` starts only on the actual HTML audio element's `playing` event.
 - `ended`, interruption, switching, disconnect and playback errors reset to idle.
+- Server readiness cannot overwrite an audio segment that is still buffering or playing.
+- Group audio carries a small application envelope with the stable character ID. The client strips it before decoding MP3 and associates the ID with that queued segment. Only its actual `playing` event activates the corresponding bird; other birds listen. Server and client must be updated together.
 - Audio plays in FIFO order. Cancel increments a generation guard so stale
   callbacks cannot restart old audio. User speech can interrupt active playback.
 - Errors have visible retry controls; failed microphone startup is cancelled when
@@ -81,13 +84,13 @@ route as the original application. There is no new model endpoint or client key.
   are drafts for visual review, not newly approved identity references.
 - `public/characters/<id>/turnaround.png` is the unchanged reference, shown only
   in the clearly marked reference viewer. Its aspect ratio is preserved.
-- `runtime-assets.json` records provenance and keeps unavailable state poses null.
-  Listening/thinking/speaking reuse the idle image with a state indicator and a
-  subtle CSS movement during actual speech. No five-angle animation, mouth motion
-  or phoneme-accurate lip sync is claimed.
+- The approved twelve-frame atlases in `public/characters/<id>/animation-draft/` now drive the runtime through `src/animation/BirdSprite.tsx`. The existing `idle.png` is a loading/error fallback; the resting animation frame is atlas frame zero.
+- Listening uses the approved turn/blink loop. Thinking holds the attentive pose with occasional blinks. Speaking starts a closed-beak body gesture only when response audio actually plays. These drawings have no mouth animation or phoneme lip sync.
+- `SpriteTimeline` cancels old timers on state change, stop, interruption and unmount. Hidden tabs and reduced-motion settings display the resting frame while preserving voice controls and state labels.
+- Sage retains the approved fixed lower-body layer, including an explicit stable-foot crop in the canvas renderer after atlas compression.
+- Atlas failure falls back to the original idle image; it does not break the conversation. `runtime-assets.json` records the runtime mapping. The original kit manifest and turnaround hashes remain unchanged.
 
-Still optional: approved alternate state poses, blink/open-mouth assets and
-output-amplitude-driven mouth timing. No paid external service has been added.
+No new model/provider call is required for animation. The model and configured voices are unchanged. Animation-only HTML and GIF studies remain available through [animation-previews.md](animation-previews.md); they are not hosted Cloudflare voice sessions.
 
 ## Validation
 
@@ -97,10 +100,10 @@ npm run check
 npm run deploy
 ```
 
-`npm test` runs 10 deterministic tests for identity separation, approved mapping,
+`npm test` runs 15 deterministic tests for identity separation, approved mapping,
 unchanged references, FIFO playback, cancellation/stale callbacks, errors,
 transcript/mute isolation, microphone-startup cancellation and transport routing.
-The SDK boundary is mocked; this is **not** a live Cloudflare voice test.
+Additional tests cover animation timer cleanup/reduced motion, per-audio group identity, server status while buffering, actual-playback gating, mute, interruption and playback errors. The SDK boundary is mocked; this is **not** a live Cloudflare voice test.
 
 In the implementation workspace `npm test` passed. `node --experimental-transform-types
 --check` passed for the server and frontend voice controller. Dependency downloads
@@ -115,11 +118,12 @@ the following manual acceptance check on your authenticated Mac before deploying
 5. Deny microphone access or disconnect the network. Retry should recover without
    recording automatically or leaving an inactive bird in speaking state.
 6. Check that speaking begins with audible playback and returns to idle at its end.
-7. Inspect references and generated idle previews at desktop/mobile widths.
+7. Inspect all three approved atlas animations at desktop/mobile widths, including Sage’s planted feet. Try reduced-motion mode and switch away mid-gesture.
+8. In group mode, verify only the audibly speaking bird shows speaking; queued replies must not switch the character early.
 
 Deployment is a separate action. This change does not deploy, migrate, delete or
 publish any existing conversation data.
-# Character motion
 
-The supplied single-pose artwork now has CSS depth, soft ground shadows and subtle body gestures. Sunny sways, Chirpy makes small hops and Sage nods slowly. The existing per-character audio playback state selects speaking, listening and thinking gestures; these are body movements, not mouth animation or phoneme lip sync. Other birds lean toward an active individual speaker. Group audio does not yet expose its active speaker to these individual cards. Reduced-motion preferences disable the gestures. No new model calls are required.
+## API references checked for this integration
 
+The existing pinned `@cloudflare/voice@0.3.0` transport and `afterSynthesize(audio, text, connection)` hooks were checked against the [tagged SDK source](https://github.com/cloudflare/agents/tree/%40cloudflare%2Fvoice%400.3.0/packages/voice/src) and the [Cloudflare voice documentation](https://developers.cloudflare.com/agents/communication-channels/voice/). Group speaker identity is an application envelope, not an invented SDK option.

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { characters, characterSessionName, type CharacterId } from "./characters";
-import { CharacterSession } from "./voice/session";
+import { CharacterSession, type SessionSnapshot } from "./voice/session";
+import { BirdSprite } from "./animation/BirdSprite";
+import { characterDisplayPhase } from "./animation/phase";
 import "./character-motion.css";
 
 type Selection = CharacterId | "group";
@@ -33,6 +35,8 @@ export default function App() {
     return session;
   }
   const session = getSession(selected);
+  const groupSession = getSession("group");
+  const groupState = useSyncExternalStore(groupSession.subscribe, groupSession.getSnapshot);
   useEffect(() => {
     const registry = sessions.current;
     return () => { Object.values(registry).forEach((item) => item?.disconnect()); };
@@ -48,10 +52,10 @@ export default function App() {
         <span className="eyebrow">A LITTLE COMPANY</span>
         <h1>一起，慢慢聊。</h1>
         <p>三隻小鳥，三份各自記得的故事。選一位朋友，分享今天的你。</p>
-        <span className="language-note">目前支援英文語音 · 角色站姿為參考圖衍生預覽</span>
+        <span className="language-note">目前支援英文語音</span>
       </header>
       <div className="character-grid" role="group" aria-label="選擇小鳥">
-        {characters.map((bird) => <CharacterCard key={bird.id} id={bird.id} selected={selected === bird.id} session={getSession(bird.id)} onSelect={() => select(bird.id)} />)}
+        {characters.map((bird) => <CharacterCard key={bird.id} id={bird.id} selected={selected === bird.id} session={getSession(bird.id)} groupState={selected === "group" ? groupState : null} onSelect={() => select(bird.id)} />)}
       </div>
       <div className="mode-row"><p>每位朋友都有自己的對話紀錄與聲音。</p><button className="quiet-button" aria-pressed={selected === "group"} onClick={() => select("group")}>三鳥一起聊</button></div>
       <Conversation key={selected} id={selected} session={session} onReference={() => { if (selected !== "group") setReference(selected); }} />
@@ -67,13 +71,14 @@ export default function App() {
   );
 }
 
-function CharacterCard({ id, selected, session, onSelect }: { id: CharacterId; selected: boolean; session: CharacterSession; onSelect: () => void; }) {
+function CharacterCard({ id, selected, session, groupState, onSelect }: { id: CharacterId; selected: boolean; session: CharacterSession; groupState: SessionSnapshot | null; onSelect: () => void; }) {
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const bird = characters.find((character) => character.id === id)!;
-  return <button className={`character-card ${selected ? "is-selected" : ""} phase-${state.phase}`} aria-pressed={selected} onClick={onSelect}>
-    <div className="character-art"><img src={bird.image} alt={bird.name} /></div>
+  const phase = characterDisplayPhase(id, state, groupState);
+  return <button className={`character-card ${selected ? "is-selected" : ""} phase-${phase}`} aria-pressed={selected} onClick={onSelect}>
+    <div className="character-art"><BirdSprite id={id} phase={phase} name={bird.name} fallback={bird.image} /></div>
     <span className="character-species">{bird.name}</span><strong>{nicknames[id]}</strong>
-    <span className={`phase-label ${state.phase === "speaking" ? "is-speaking" : ""}`}>{labels[state.phase]}</span>
+    <span className={`phase-label ${phase === "speaking" ? "is-speaking" : ""}`}>{labels[phase]}</span>
   </button>;
 }
 

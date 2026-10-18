@@ -1,4 +1,5 @@
 import { characterFromSession } from "./characters";
+import { characterFromSpeakerLabel, encodeCharacterAudio } from "./voice/audio-envelope";
 import { characterAgentConfig } from "./character-config.server";
 import { Agent, routeAgentRequest } from "agents";
 import {
@@ -150,6 +151,14 @@ const VoiceAgentBase = withVoice(Agent, {
 
 export class BirdVoiceAgent extends VoiceAgentBase<Env> {
   transcriber = new WorkersAIFluxSTT(this.env.AI);
+
+  afterSynthesize(audio: ArrayBuffer | null, text: string): ArrayBuffer | null {
+    if (!audio?.byteLength) return null;
+    if (!this.name.endsWith("--group")) return audio;
+    const speaker = characterFromSpeakerLabel(text);
+    if (!speaker) throw new Error("群聊音訊缺少角色名稱。");
+    return encodeCharacterAudio(audio, speaker);
+  }
 
   tts: BirdTTS | GroupBirdTTS = new BirdTTS(
     this.env.AI,

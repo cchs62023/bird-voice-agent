@@ -1,5 +1,5 @@
 {
-  "status": "draft-for-review",
+  "status": "approved-and-connected",
   "character": "sparrow",
   "source": "Newly generated in-between drawings, not turnaround frames",
   "atlas": "listen-atlas.webp",
@@ -28,7 +28,7 @@
     "listening"
   ],
   "mouthAnimation": false,
-  "approvedForRuntime": false,
+  "approvedForRuntime": true,
   "notes": "First animation study. Feet and outline may drift slightly between generated frames; review before applying to other characters.",
   "registration": "Generated atlas rows sliced at transparent gutters; feet baseline aligned to y=364 without warping artwork."
 }

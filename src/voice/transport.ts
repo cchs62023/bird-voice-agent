@@ -1,12 +1,13 @@
 import { PlaybackQueue } from "./playback";
+import { decodeCharacterAudio } from "./audio-envelope";
 
 // Implements the documented VoiceTransport contract, keeping the SDK's mic/STT
 // and transcript handling while making actual playback observable and testable.
 export class CharacterTransport {
-  onopen?: () => void;
-  onclose?: (info?: { code?: number; reason?: string; wasClean?: boolean }) => void;
-  onerror?: (error?: unknown) => void;
-  onmessage?: (data: string | ArrayBuffer | Blob) => void;
+  onopen: (() => void) | null = null;
+  onclose: ((info?: { code?: number; reason?: string; wasClean?: boolean }) => void) | null = null;
+  onerror: ((error?: unknown) => void) | null = null;
+  onmessage: ((data: string | ArrayBuffer | Blob) => void) | null = null;
   private socket: WebSocket | null = null;
   private acceptingAudio = false;
   private audioGeneration = 0;
@@ -58,10 +59,10 @@ export class CharacterTransport {
         this.onmessage?.(event.data);
       } else if (this.acceptingAudio) {
         const generation = this.audioGeneration;
-        if (event.data instanceof ArrayBuffer) this.playback.enqueue(event.data);
+        if (event.data instanceof ArrayBuffer) this.enqueueAudio(event.data);
         else event.data.arrayBuffer().then((bytes) => {
           if (this.socket === socket && this.acceptingAudio && generation === this.audioGeneration) {
-            this.playback.enqueue(bytes);
+            this.enqueueAudio(bytes);
           }
         }).catch((error: unknown) => this.onerror?.(error));
       }
@@ -72,6 +73,16 @@ export class CharacterTransport {
     if (message.type === "start_call") this.resetPlayback(true);
     if (message.type === "end_call" || message.type === "interrupt") this.resetPlayback(false);
     if (this.connected) this.socket?.send(JSON.stringify(message));
+  }
+
+  private enqueueAudio(bytes: ArrayBuffer) {
+    try {
+      const audio = decodeCharacterAudio(bytes);
+      this.playback.enqueue(audio.bytes, audio.speaker);
+    } catch (error) {
+      this.resetPlayback(false);
+      this.onerror?.(error);
+    }
   }
 
   sendBinary(data: ArrayBuffer) { if (this.connected) this.socket?.send(data); }

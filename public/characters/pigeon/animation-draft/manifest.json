@@ -1,5 +1,5 @@
 {
-  "status": "draft-for-review",
+  "status": "approved-and-connected",
   "character": "pigeon",
   "name": "Chirpy",
   "source": "Twelve newly generated in-between drawings; original turnaround is unchanged.",
@@ -30,7 +30,7 @@
     "listening"
   ],
   "mouthAnimation": false,
-  "approvedForRuntime": false,
+  "approvedForRuntime": true,
   "registration": {
     "method": "Slice transparent row gutters, translate only, feet baseline y=364. No artwork warping.",
     "sourceRowCuts": [
