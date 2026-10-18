@@ -1,0 +1,202 @@
+{
+  "status": "draft-for-review",
+  "character": "malayan-night-heron",
+  "name": "Sage",
+  "source": "Twelve newly generated in-between drawings; original turnaround is unchanged.",
+  "atlas": "listen-atlas.webp",
+  "previewAtlas": "listen-preview.webp",
+  "columns": 4,
+  "rows": 3,
+  "frameCount": 12,
+  "frameWidth": 384,
+  "frameHeight": 384,
+  "durationsMs": [
+    2600,
+    120,
+    120,
+    140,
+    900,
+    70,
+    130,
+    70,
+    1100,
+    140,
+    140,
+    2500
+  ],
+  "actions": [
+    "head-turn",
+    "blink",
+    "listening"
+  ],
+  "mouthAnimation": false,
+  "approvedForRuntime": false,
+  "registration": {
+    "method": "Slice transparent row gutters, translate only, feet baseline y=364. No artwork warping.",
+    "sourceRowCuts": [
+      0,
+      375,
+      736,
+      1086
+    ],
+    "frames": [
+      {
+        "frame": 0,
+        "offsetPx": [
+          11,
+          -7
+        ],
+        "visibleBox": [
+          77,
+          17,
+          331,
+          371
+        ]
+      },
+      {
+        "frame": 1,
+        "offsetPx": [
+          11,
+          -7
+        ],
+        "visibleBox": [
+          61,
+          17,
+          308,
+          371
+        ]
+      },
+      {
+        "frame": 2,
+        "offsetPx": [
+          11,
+          -8
+        ],
+        "visibleBox": [
+          44,
+          17,
+          287,
+          372
+        ]
+      },
+      {
+        "frame": 3,
+        "offsetPx": [
+          11,
+          -7
+        ],
+        "visibleBox": [
+          45,
+          17,
+          275,
+          371
+        ]
+      },
+      {
+        "frame": 4,
+        "offsetPx": [
+          11,
+          5
+        ],
+        "visibleBox": [
+          76,
+          3,
+          306,
+          359
+        ]
+      },
+      {
+        "frame": 5,
+        "offsetPx": [
+          11,
+          5
+        ],
+        "visibleBox": [
+          61,
+          3,
+          293,
+          359
+        ]
+      },
+      {
+        "frame": 6,
+        "offsetPx": [
+          11,
+          5
+        ],
+        "visibleBox": [
+          48,
+          3,
+          280,
+          359
+        ]
+      },
+      {
+        "frame": 7,
+        "offsetPx": [
+          11,
+          4
+        ],
+        "visibleBox": [
+          50,
+          3,
+          282,
+          360
+        ]
+      },
+      {
+        "frame": 8,
+        "offsetPx": [
+          11,
+          19
+        ],
+        "visibleBox": [
+          77,
+          6,
+          325,
+          345
+        ]
+      },
+      {
+        "frame": 9,
+        "offsetPx": [
+          11,
+          19
+        ],
+        "visibleBox": [
+          61,
+          2,
+          299,
+          345
+        ]
+      },
+      {
+        "frame": 10,
+        "offsetPx": [
+          11,
+          19
+        ],
+        "visibleBox": [
+          47,
+          2,
+          295,
+          345
+        ]
+      },
+      {
+        "frame": 11,
+        "offsetPx": [
+          11,
+          19
+        ],
+        "visibleBox": [
+          46,
+          2,
+          302,
+          345
+        ]
+      }
+    ]
+  },
+  "notes": "Review sample, not enabled in the voice runtime. Small contour changes remain between generated drawings."
+}
