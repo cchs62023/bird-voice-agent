@@ -1,245 +1,137 @@
-# Agent Starter
+# Three bird voice companions
 
-![npm i agents command](./npm-agents-banner.svg)
+React + Cloudflare Agents / Durable Objects + Workers AI. Integrates the approved
+`bird-voice-agent-kit` without changing its source sheets or manifest.
 
-<a href="https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/agents-starter"><img src="https://deploy.workers.cloudflare.com/button" alt="Deploy to Cloudflare"/></a>
+## Characters
 
-A starter template for building AI chat agents on Cloudflare, powered by the [Agents SDK](https://developers.cloudflare.com/agents/).
+| Stable ID | Artwork | Approved persona | Existing Aura-2 speaker |
+| --- | --- | --- | --- |
+| `sparrow` | 麻雀 | Sunny — warm and patient | `asteria` |
+| `pigeon` | 鴿子 | Chirpy — playful and curious | `luna` |
+| `malayan-night-heron` | 黑冠麻鷺 | Sage — calm and thoughtful | `orion` |
 
-Uses Workers AI (no API key required), with tools for weather, timezone detection, calculations with approval, task scheduling, and vision (image input).
+This mapping was approved in the implementation conversation. Species alone did
+not determine the personalities. The kit's intentional null fields remain intact;
+approved backend overrides live in `src/character-config.server.ts`.
 
-## Quick start
+## Run on your Mac
+
+Use Node.js 24 LTS (the dependency-free tests use Node's TypeScript stripping).
 
 ```bash
-npx create-cloudflare@latest --template cloudflare/agents-starter
-cd agents-starter
-npm install
+npm ci
+npm run types
 npm run dev
 ```
 
-> **Cloudflare authentication is required to run locally.** This template uses
-> Workers AI with `"ai": { "remote": true }` in `wrangler.jsonc`, and Workers AI
-> has no local simulator — so `npm run dev` opens a remote proxy session against
-> Cloudflare and needs you to be authenticated. Either run `wrangler login` once
-> in an interactive terminal, or set a `CLOUDFLARE_API_TOKEN` environment
-> variable (e.g. in a `.env` file). No third-party (OpenAI/Anthropic) key is
-> needed, but a Cloudflare login is.
+Open the local URL printed by Vite. Cloudflare authentication is required because
+the existing `AI` binding uses `remote: true`. If not already authenticated, run
+`npx wrangler login` in your own terminal. No additional voice-provider API key is
+required. Existing Workers AI usage/pricing still applies.
 
-Open [http://localhost:5173](http://localhost:5173) to see your agent in action.
+Choose a character, click 開始聊天, allow microphone access, then speak English.
+Only the selected session connects. Switching characters stops the previous mic,
+audio playback and pending audio before connecting the next character. Reconnect
+is explicit using 重新連線; the app never silently resumes recording after an error.
 
-Try these prompts to see the different features:
+## Isolation and persistence
 
-- **"What's the weather in Paris?"** — server-side tool (runs automatically)
-- **"What timezone am I in?"** — client-side tool (browser provides the answer)
-- **"Calculate 5000 \* 3"** — approval tool (asks you before running)
-- **"Remind me in 5 minutes to take a break"** — scheduling
-- **Drop an image and ask "What's in this image?"** — vision (image understanding)
+- All characters reuse the existing exported `BirdVoiceAgent` class and provider
+  infrastructure. The isolation boundary is a **different named Durable Object**
+  for each browser + stable character ID: `characters-v1--<browser-id>--<id>`.
+- Each object has its own SDK SQLite conversation history and its own
+  `cf_character_state` row (character, voice, language, call count and turn count).
+- Each character also has its own frontend session object, transcript, mute/error
+  state and audio queue. An inactive session never plays another session's audio.
+- Existing `v2--...--sunny/chirpy/sage` histories are untouched. They are not
+  silently copied or reassigned to the new species. The previous group-chat
+  implementation remains available in its own named object and history.
+- The current chat model is the repository's existing Kimi model. Changing
+  `CHAT_MODEL` does not change character IDs, voices, artwork or history scopes.
 
-## Project structure
+Browser IDs are local prototype identities, **not authenticated user accounts**.
+Before sharing a deployment, add server-side authentication/authorization for
+agent names. Changing browsers or clearing local storage creates a new identity.
+Local `.wrangler` SQLite data and deployed Durable Object data are separate.
 
-```
-src/
-  server.ts    # Chat agent with tools and scheduling
-  app.tsx      # Chat UI built with Kumo components
-  client.tsx   # React entry point
-  styles.css   # Tailwind + Kumo styles
-```
+## Actual audio playback states
 
-## What's included
+`VoiceClient` continues to manage microphone input, Cloudflare voice protocol and
+transcripts. `CharacterTransport` implements its documented custom-transport
+contract and directs response audio to the application's observable playback queue.
 
-- **AI Chat** — Streaming responses powered by Workers AI via `AIChatAgent`
-- **Image input** — Drag-and-drop, paste, or click to attach images for vision-capable models
-- **Three tool patterns** — server-side auto-execute, client-side (browser), and human-in-the-loop approval
-- **Scheduling** — one-time, delayed, and recurring (cron) tasks
-- **Reasoning display** — shows model thinking as it streams, collapses when done
-- **Debug mode** — toggle in the header to inspect raw message JSON for each message
-- **Kumo UI** — Cloudflare's design system with dark/light mode
-- **Real-time** — WebSocket connection with automatic reconnection and message persistence
+- `listening` follows accepted call/listening status, interim speech and microphone activity. Muted, inactive sessions rest.
+- `thinking` follows model processing, never text masquerading as speech.
+- `speaking` starts only on the actual HTML audio element's `playing` event.
+- `ended`, interruption, switching, disconnect and playback errors reset to idle.
+- Server readiness cannot overwrite an audio segment that is still buffering or playing.
+- Group audio carries a small application envelope with the stable character ID. The client strips it before decoding MP3 and associates the ID with that queued segment. Only its actual `playing` event activates the corresponding bird; other birds listen. Server and client must be updated together.
+- Audio plays in FIFO order. Cancel increments a generation guard so stale
+  callbacks cannot restart old audio. User speech can interrupt active playback.
+- Errors have visible retry controls; failed microphone startup is cancelled when
+  the user switches away while a permission dialog is still pending.
 
-## Making it your own
+The native WebSocket transport uses the same `/agents/bird-voice-agent/<name>`
+route as the original application. There is no new model endpoint or client key.
 
-### Name your project
+## Artwork
 
-Update the name in `package.json` and `wrangler.jsonc` — the `name` in `wrangler.jsonc` becomes your deployed Worker's URL (`<name>.<subdomain>.workers.dev`).
+- `bird-voice-agent-kit/` preserves the exact uploaded files. SHA-256 tests verify
+  all three approved turnaround sheets.
+- `public/characters/<id>/idle.png` contains a generated **preview** front-three-
+  quarter transparent standing pose based on the matching approved sheet. These
+  are drafts for visual review, not newly approved identity references.
+- `public/characters/<id>/turnaround.png` is the unchanged reference, shown only
+  in the clearly marked reference viewer. Its aspect ratio is preserved.
+- The approved twelve-frame atlases in `public/characters/<id>/animation-draft/` now drive the runtime through `src/animation/BirdSprite.tsx`. The existing `idle.png` is a loading/error fallback; the resting animation frame is atlas frame zero.
+- Listening uses the approved turn/blink loop. Thinking holds the attentive pose with occasional blinks. Speaking starts a closed-beak body gesture only when response audio actually plays. These drawings have no mouth animation or phoneme lip sync.
+- `SpriteTimeline` cancels old timers on state change, stop, interruption and unmount. Hidden tabs and reduced-motion settings display the resting frame while preserving voice controls and state labels.
+- Sage retains the approved fixed lower-body layer, including an explicit stable-foot crop in the canvas renderer after atlas compression.
+- Atlas failure falls back to the original idle image; it does not break the conversation. `runtime-assets.json` records the runtime mapping. The original kit manifest and turnaround hashes remain unchanged.
 
-### Change the system prompt
+No new model/provider call is required for animation. The model and configured voices are unchanged. Animation-only HTML and GIF studies remain available through [animation-previews.md](animation-previews.md); they are not hosted Cloudflare voice sessions.
 
-Edit the `system` string in `server.ts` to give your agent a different personality or focus area. This is the most impactful single change you can make.
-
-### Replace the demo tools with real ones
-
-The starter ships with demo tools (`getWeather` returns random data, `calculate` does basic arithmetic). Replace them with real implementations:
-
-```ts
-// In server.ts, replace a demo tool with a real API call:
-getWeather: tool({
-  description: "Get the current weather for a city",
-  inputSchema: z.object({ city: z.string() }),
-  execute: async ({ city }) => {
-    const res = await fetch(`https://api.weather.example/${city}`);
-    return res.json();
-  }
-}),
-```
-
-### Add your own tools
-
-Add new tools to the `tools` object in `server.ts`. There are three patterns:
-
-```ts
-// Auto-execute: runs on the server, no user interaction
-myTool: tool({
-  description: "...",
-  inputSchema: z.object({ /* ... */ }),
-  execute: async (input) => { /* return result */ }
-}),
-
-// Client-side: no execute function, browser provides the result
-// Handle it in app.tsx via the onToolCall callback
-browserTool: tool({
-  description: "...",
-  inputSchema: z.object({ /* ... */ })
-}),
-
-// Approval: add needsApproval to gate execution
-sensitiveTool: tool({
-  description: "...",
-  inputSchema: z.object({ /* ... */ }),
-  needsApproval: async (input) => true, // or conditional logic
-  execute: async (input) => { /* runs after approval */ }
-}),
-```
-
-### Customize scheduled task behavior
-
-When a scheduled task fires, `executeTask` runs on the server. It does its work and then uses `this.broadcast()` to notify connected clients (shown as a toast notification in the UI). Replace it with your own logic:
-
-```ts
-async executeTask(description: string, task: Schedule<string>) {
-  // Do the actual work
-  await sendEmail({ to: "user@example.com", subject: description });
-
-  // Notify connected clients
-  this.broadcast(
-    JSON.stringify({ type: "scheduled-task", description, timestamp: new Date().toISOString() })
-  );
-}
-```
-
-> **Why `broadcast()` instead of `saveMessages()`?** Injecting into chat history can cause the AI to see the notification as new context and re-trigger the same task in a loop. `broadcast()` sends a one-off event that the client displays separately from the conversation.
-
-### Remove scheduling
-
-If you don't need scheduling, remove `scheduleTask`, `getScheduledTasks`, and `cancelScheduledTask` from the tools object, the `executeTask` method, and the schedule-related imports (`getSchedulePrompt`, `scheduleSchema`, `Schedule`).
-
-### Add state beyond chat messages
-
-Use `this.setState()` and `this.state` for real-time state that syncs to all connected clients. See [Store and sync state](https://developers.cloudflare.com/agents/api-reference/store-and-sync-state/).
-
-### Add callable methods
-
-Expose agent methods as typed RPC that your client can call directly:
-
-```ts
-import { callable } from "agents";
-
-export class ChatAgent extends AIChatAgent<Env> {
-  @callable()
-  async getStats() {
-    return { messageCount: this.messages.length };
-  }
-}
-
-// Client-side:
-const stats = await agent.call("getStats");
-```
-
-See [Callable methods](https://developers.cloudflare.com/agents/api-reference/callable-methods/).
-
-### Connect to MCP servers
-
-Add external tools from MCP servers:
-
-```ts
-async onChatMessage(onFinish, options) {
-  // Connect to an MCP server
-  await this.mcp.connect("https://my-mcp-server.example/sse");
-
-  const result = streamText({
-    // ...
-    tools: {
-      ...myTools,
-      ...this.mcp.getAITools() // Include MCP tools
-    }
-  });
-}
-```
-
-See [MCP Client API](https://developers.cloudflare.com/agents/api-reference/mcp-client-api/).
-
-## Use a different AI model provider
-
-The starter uses [Workers AI](https://developers.cloudflare.com/workers-ai/) by default (no API key needed). To use a different provider:
-
-### OpenAI
+## Validation
 
 ```bash
-npm install @ai-sdk/openai
-```
-
-```ts
-// In server.ts, replace the model:
-import { openai } from "@ai-sdk/openai";
-
-// Inside onChatMessage:
-const result = streamText({
-  model: openai("gpt-5.2")
-  // ...
-});
-```
-
-Create a `.env` file with your API key:
-
-```
-OPENAI_API_KEY=your-key-here
-```
-
-### Anthropic
-
-```bash
-npm install @ai-sdk/anthropic
-```
-
-```ts
-import { anthropic } from "@ai-sdk/anthropic";
-
-const result = streamText({
-  model: anthropic("claude-sonnet-4-20250514")
-  // ...
-});
-```
-
-Create a `.env` file with your API key:
-
-```
-ANTHROPIC_API_KEY=your-key-here
-```
-
-## Deploy
-
-```bash
+npm test
+npm run check
 npm run deploy
 ```
 
-Your agent is live on Cloudflare's global network. Messages persist in SQLite, streams resume on disconnect, and the agent hibernates when idle.
+`npm test` runs 15 deterministic tests for identity separation, approved mapping,
+unchanged references, FIFO playback, cancellation/stale callbacks, errors,
+transcript/mute isolation, microphone-startup cancellation and transport routing.
+Additional tests cover animation timer cleanup/reduced motion, per-audio group identity, server status while buffering, actual-playback gating, mute, interruption and playback errors. Group-stream tests verify one generation, release of the first reply before the second is available, cancellation, and speaker validation. The SDK boundary is mocked; this is **not** a live Cloudflare voice test.
 
-## Learn more
+### Group latency
 
-- [Agents SDK documentation](https://developers.cloudflare.com/agents/)
-- [Build a chat agent tutorial](https://developers.cloudflare.com/agents/getting-started/build-a-chat-agent/)
-- [Chat agents API reference](https://developers.cloudflare.com/agents/api-reference/chat-agents/)
-- [Workers AI models](https://developers.cloudflare.com/workers-ai/models/)
+Group mode now makes one Kimi request per turn, generating the two selected birds in order. Each complete speaker line is released to the existing voice pipeline immediately; the second reply no longer starts a separate model request. The model, fixed voices, playback ordering and character artwork stay the same. Each bird remains a separate voice-agent session in solo mode; group mode has its own shared conversation.
 
-## License
+Run `npx wrangler tail three-birds --format pretty` while testing. Structured logs include `bird_group_start`, `bird_group_first_text`, `bird_group_reply_ready`, `bird_group_text_end` and `bird_tts_end`. Group events share a random `turnId`; TTS events report voice and synthesis duration. No new log includes transcript text or browser identity. Group elapsed times begin after STT has delivered the user's turn; they do not measure microphone detection, network delivery or actual browser playback. A cancelled turn is recorded as `aborted`.
 
-MIT
+This removes one model call, not the model's first-token or TTS latency. Compare single-device and multi-device timings after deployment before drawing conclusions about capacity. No production latency reduction or live load-test result has been measured here.
+
+In the implementation workspace `npm test` passed. `node --experimental-transform-types
+--check` passed for the server and frontend voice controller. Dependency downloads
+were unavailable, so the formatter/linter/TypeScript build and live voice test
+could not be completed there. Run `npm ci`, `npm run format`, `npm run check`, then
+the following manual acceptance check on your authenticated Mac before deploying:
+
+1. Tell Sunny one fact; switch to Chirpy and verify that fact is absent there.
+2. Return to Sunny; verify the earlier transcript remains.
+3. Check all three names and fixed configured speakers; confirm Sage is a heron.
+4. While a bird speaks, switch characters or interrupt. No queued old audio may play.
+5. Deny microphone access or disconnect the network. Retry should recover without
+   recording automatically or leaving an inactive bird in speaking state.
+6. Check that speaking begins with audible playback and returns to idle at its end.
+7. Inspect all three approved atlas animations at desktop/mobile widths, including Sage’s planted feet. Try reduced-motion mode and switch away mid-gesture.
+8. In group mode, verify only the audibly speaking bird shows speaking; queued replies must not switch the character early.
+
+Deployment is a separate action. This change does not deploy, migrate, delete or
+publish any existing conversation data.
+
+## API references checked for this integration
+
+The existing pinned `@cloudflare/voice@0.3.0` transport and `afterSynthesize(audio, text, connection)` hooks were checked against the [tagged SDK source](https://github.com/cloudflare/agents/tree/%40cloudflare%2Fvoice%400.3.0/packages/voice/src) and the [Cloudflare voice documentation](https://developers.cloudflare.com/agents/communication-channels/voice/). Group speaker identity is an application envelope, not an invented SDK option.

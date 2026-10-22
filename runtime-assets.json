@@ -1,0 +1,37 @@
+{
+  "status": "approved-and-connected",
+  "description": "Approved twelve-frame head-turn, blink and listening artwork. Voice playback drives closed-beak body gestures; no mouth or phoneme lip sync.",
+  "characters": {
+    "sparrow": {
+      "atlas": "/characters/sparrow/animation-draft/listen-atlas.webp",
+      "fallback": "/characters/sparrow/idle.png",
+      "idleFrame": 0,
+      "listening": "approved twelve-frame turn and blink loop",
+      "thinking": "turn toward user, hold and blink",
+      "speaking": "closed-beak body gesture, gated by audio playing event",
+      "controller": "src/animation/frames.ts",
+      "referenceUnmodified": true
+    },
+    "pigeon": {
+      "atlas": "/characters/pigeon/animation-draft/listen-atlas.webp",
+      "fallback": "/characters/pigeon/idle.png",
+      "idleFrame": 0,
+      "listening": "approved twelve-frame turn and blink loop",
+      "thinking": "turn toward user, hold and blink",
+      "speaking": "closed-beak body gesture, gated by audio playing event",
+      "controller": "src/animation/frames.ts",
+      "referenceUnmodified": true
+    },
+    "malayan-night-heron": {
+      "atlas": "/characters/malayan-night-heron/animation-draft/listen-atlas.webp",
+      "fallback": "/characters/malayan-night-heron/idle.png",
+      "idleFrame": 0,
+      "listening": "approved twelve-frame turn and blink loop",
+      "thinking": "turn toward user, hold and blink",
+      "speaking": "closed-beak body gesture, gated by audio playing event",
+      "controller": "src/animation/frames.ts",
+      "referenceUnmodified": true,
+      "fixedLowerBodyFromY": 256
+    }
+  }
+}
