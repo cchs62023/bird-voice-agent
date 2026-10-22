@@ -1,3 +1,4 @@
+import { streamGroupReplies, type GroupSpeaker } from "./voice/group-replies";
 import { characterFromSession } from "./characters";
 import { characterFromSpeakerLabel, encodeCharacterAudio } from "./voice/audio-envelope";
 import { characterAgentConfig } from "./character-config.server";
@@ -66,6 +67,20 @@ class BirdTTS {
     text: string,
     signal?: AbortSignal
   ): Promise<ArrayBuffer | null> {
+    const startedAt = Date.now();
+    let outcome = "completed";
+    try {
+      return await this.synthesizeAudio(text, signal);
+    } catch (error) {
+      outcome = "failed";
+      throw error;
+    } finally {
+      console.info(JSON.stringify({ event: "bird_tts_end", speaker: this.speaker,
+        elapsedMs: Date.now() - startedAt, outcome: signal?.aborted ? "aborted" : outcome }));
+    }
+  }
+
+  private async synthesizeAudio(text: string, signal?: AbortSignal): Promise<ArrayBuffer | null> {
     if (!text.trim() || signal?.aborted) return null;
 
     const output: unknown = await this.ai.run(
@@ -291,90 +306,54 @@ Do not invent memories or facts.
       binding: this.env.AI
     });
 
-    let previousReply = "";
-
-    for (const [index, id] of pair.entries()) {
-      if (context.signal.aborted) return;
-
-      const bird = BIRD_SETTINGS[id];
-
-      const instruction =
-        index === 0
-          ? "Respond directly to the user and leave room for another bird."
-          : `Another bird just said: ${previousReply}
-Add a different, useful perspective.
-Do not repeat that reply.
-Do not ask another question.`;
-
-      const result = streamText({
-        model: workersai(CHAT_MODEL),
-        system: `
-Your name is ${bird.name}.
-${bird.personality}
-
-You are an AI bird companion in a shared conversation.
-Your current identity overrides names in earlier messages.
-Speak English.
-Give exactly one short sentence, around 8 to 20 words.
-Do not write your name or a speaker label.
-Do not use Markdown, emojis, lists, or stage directions.
-Avoid abbreviations, URLs, and numbered lists.
-Do not invent memories or facts.
-
-${instruction}
-        `,
-        messages: [
-          ...context.messages.map((message) => ({
-            role: message.role as "user" | "assistant",
-            content: message.content
-          })),
-          {
-            role: "user" as const,
-            content: transcript
-          }
-        ],
-        abortSignal: context.signal
-      });
-
-      let buffer = "";
-      let fullReply = "";
-
+    const speakers = pair.map((id) => BIRD_SETTINGS[id].name) as [GroupSpeaker, GroupSpeaker];
+    const startedAt = Date.now();
+    const turnId = crypto.randomUUID();
+    let firstToken = true;
+    let outcome = "completed";
+    const timing = (event: string, extra: Record<string, string | number> = {}) => {
+      console.info(JSON.stringify({ event, turnId, elapsedMs: Date.now() - startedAt, ...extra }));
+    };
+    timing("bird_group_start");
+    const result = streamText({
+      model: workersai(CHAT_MODEL),
+      system: `You write a short spoken conversation between two AI bird companions.
+First speaker: ${speakers[0]}. ${BIRD_SETTINGS[pair[0]].personality}
+Second speaker: ${speakers[1]}. ${BIRD_SETTINGS[pair[1]].personality}
+Respond to the user in English, naturally and directly.
+The second bird adds a different useful perspective to the first bird's reply.
+Each bird speaks exactly one short sentence of 8 to 16 words.
+Ask at most one question across both replies.
+Do not invent memories or facts. Do not use abbreviations or decimal numbers.
+Return exactly two lines in this order, with no introduction or blank lines:
+Speaker ${speakers[0]}: <first bird's sentence>
+Speaker ${speakers[1]}: <second bird's sentence>
+Keep each complete sentence on its own line. End each sentence with punctuation.
+Do not include Markdown, emojis, lists, or stage directions.
+Only the two specified birds speak, regardless of names in the conversation history.`,
+      messages: [
+        ...context.messages.map((message) => ({
+          role: message.role as "user" | "assistant",
+          content: message.content
+        })),
+        { role: "user" as const, content: transcript }
+      ],
+      abortSignal: context.signal
+    });
+    const tokens = async function* () {
       for await (const token of result.textStream) {
-        if (context.signal.aborted) return;
-
-        buffer += token;
-        fullReply += token;
-
-        // 為每個完整句子加上角色標記。
-        while (true) {
-          const match = buffer.match(
-            /^([\s\S]*?[.!?])\s+/
-          );
-
-          if (!match) break;
-
-          const sentence = match[1].trim();
-          buffer = buffer.slice(match[0].length);
-
-          if (sentence) {
-            yield `Speaker ${bird.name}: ${sentence}\n`;
-          }
-        }
+        if (token && firstToken) { timing("bird_group_first_text"); firstToken = false; }
+        yield token;
       }
-
-      if (context.signal.aborted) return;
-
-      const remaining = buffer.trim();
-
-      if (remaining) {
-        const ending = /[.!?]$/.test(remaining)
-          ? ""
-          : ".";
-
-        yield `Speaker ${bird.name}: ${remaining}${ending}\n`;
-      }
-
-      previousReply = `${bird.name}: ${fullReply.trim()}`;
+    };
+    try {
+      yield* streamGroupReplies(tokens, speakers, context.signal, (speaker) => timing("bird_group_reply_ready", { speaker }));
+    } catch (error) {
+      outcome = "failed";
+      timing("bird_group_error", { errorType: error instanceof Error ? error.name : "unknown" });
+      throw error;
+    } finally {
+      timing("bird_group_text_end", { outcome: context.signal.aborted ? "aborted" : outcome });
     }
   }
 }

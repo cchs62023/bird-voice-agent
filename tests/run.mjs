@@ -4,3 +4,4 @@ await import("./session.test.mjs");
 await import("./transport.test.mjs");
 await import("./animation.test.mjs");
 await import("./voice-animation.test.mjs");
+await import("./group-replies.test.mjs");

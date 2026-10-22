@@ -103,7 +103,15 @@ npm run deploy
 `npm test` runs 15 deterministic tests for identity separation, approved mapping,
 unchanged references, FIFO playback, cancellation/stale callbacks, errors,
 transcript/mute isolation, microphone-startup cancellation and transport routing.
-Additional tests cover animation timer cleanup/reduced motion, per-audio group identity, server status while buffering, actual-playback gating, mute, interruption and playback errors. The SDK boundary is mocked; this is **not** a live Cloudflare voice test.
+Additional tests cover animation timer cleanup/reduced motion, per-audio group identity, server status while buffering, actual-playback gating, mute, interruption and playback errors. Group-stream tests verify one generation, release of the first reply before the second is available, cancellation, and speaker validation. The SDK boundary is mocked; this is **not** a live Cloudflare voice test.
+
+### Group latency
+
+Group mode now makes one Kimi request per turn, generating the two selected birds in order. Each complete speaker line is released to the existing voice pipeline immediately; the second reply no longer starts a separate model request. The model, fixed voices, playback ordering and character artwork stay the same. Each bird remains a separate voice-agent session in solo mode; group mode has its own shared conversation.
+
+Run `npx wrangler tail three-birds --format pretty` while testing. Structured logs include `bird_group_start`, `bird_group_first_text`, `bird_group_reply_ready`, `bird_group_text_end` and `bird_tts_end`. Group events share a random `turnId`; TTS events report voice and synthesis duration. No new log includes transcript text or browser identity. Group elapsed times begin after STT has delivered the user's turn; they do not measure microphone detection, network delivery or actual browser playback. A cancelled turn is recorded as `aborted`.
+
+This removes one model call, not the model's first-token or TTS latency. Compare single-device and multi-device timings after deployment before drawing conclusions about capacity. No production latency reduction or live load-test result has been measured here.
 
 In the implementation workspace `npm test` passed. `node --experimental-transform-types
 --check` passed for the server and frontend voice controller. Dependency downloads
