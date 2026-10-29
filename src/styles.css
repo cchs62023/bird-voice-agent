@@ -8,6 +8,9 @@ button:focus-visible { outline: 3px solid #637b55; outline-offset: 5px; }
 .bird-app { min-height: 100vh; background: radial-gradient(ellipse at top, #eef1e3 0%, #f7f5ec 65%); padding: 56px 24px 24px; }
 .bird-shell { max-width: 1060px; margin: auto; }
 .bird-header { text-align: center; margin-bottom: 34px; }
+.language-switch { display: flex; justify-content: flex-end; gap: 4px; flex-wrap: wrap; margin-bottom: 24px; }
+.language-switch button { border: 1px solid #dedfce; border-radius: 20px; padding: 8px 14px; background: #fffdf4; color: #626950; font-size: 13px; min-height: 44px; }
+.language-switch button[aria-pressed="true"] { background: #6f805b; border-color: #6f805b; color: white; }
 .eyebrow { font-size: 11px; letter-spacing: .2em; color: #7c8169; }
 .bird-header h1 { font-family: Georgia, "Noto Serif TC", serif; font-size: clamp(32px, 5vw, 48px); font-weight: 500; margin: 12px 0 16px; }
 .bird-header p { color: #75735f; line-height: 1.8; }

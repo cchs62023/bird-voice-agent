@@ -3,7 +3,7 @@ import type { CharacterId, CharacterPhase } from "../characters";
 import { animationAssets, SpriteTimeline } from "./frames";
 import { drawBirdFrame } from "./draw";
 
-export function BirdSprite({ id, phase, name, fallback }: { id: CharacterId; phase: CharacterPhase; name: string; fallback: string }) {
+export function BirdSprite({ id, phase, name, fallback, unavailableText }: { unavailableText: string; id: CharacterId; phase: CharacterPhase; name: string; fallback: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const timeline = useRef<SpriteTimeline | null>(null);
   const latestPhase = useRef(phase);
@@ -47,6 +47,6 @@ export function BirdSprite({ id, phase, name, fallback }: { id: CharacterId; pha
   return <>
     {!loaded && <img className="bird-sprite-fallback" src={fallback} alt={name} />}
     <canvas ref={canvas} width={384} height={384} className="bird-sprite" hidden={!loaded} role="img" aria-label={name} data-character={id} data-phase={phase} />
-    {failed && <span className="animation-unavailable">動作暫時無法顯示</span>}
+    {failed && <span className="animation-unavailable">{unavailableText}</span>}
   </>;
 }

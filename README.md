@@ -105,6 +105,12 @@ unchanged references, FIFO playback, cancellation/stale callbacks, errors,
 transcript/mute isolation, microphone-startup cancellation and transport routing.
 Additional tests cover animation timer cleanup/reduced motion, per-audio group identity, server status while buffering, actual-playback gating, mute, interruption and playback errors. Group-stream tests verify one generation, release of the first reply before the second is available, cancellation, and speaker validation. The SDK boundary is mocked; this is **not** a live Cloudflare voice test.
 
+### Interface language
+
+The header includes English and 繁體中文 buttons. On first use the interface follows the first supported browser language, falling back to English. A manual choice is remembered in `three-birds-ui-language`; blocked browser storage still permits switching for the current visit. Page title, document language, character species names, controls, statuses, reference views, accessibility labels and application error explanations switch together. Unknown provider errors remain available under localized technical details.
+
+This is interface translation. It does not translate recorded dialogue or change the English STT/TTS and persona prompts. Language changes do not change agent identities, reconnect sessions, stop playback or reset animations. To verify after deployment, switch in both directions during a call, check the group and reference views, reload to confirm persistence, and check the layout on a narrow screen.
+
 ### Group latency
 
 Group mode now makes one Kimi request per turn, generating the two selected birds in order. Each complete speaker line is released to the existing voice pipeline immediately; the second reply no longer starts a separate model request. The model, fixed voices, playback ordering and character artwork stay the same. Each bird remains a separate voice-agent session in solo mode; group mode has its own shared conversation.
