@@ -1,0 +1,34 @@
+{
+  "status": "approved-and-connected",
+  "character": "sparrow",
+  "source": "Newly generated in-between drawings, not turnaround frames",
+  "atlas": "listen-atlas.webp",
+  "columns": 4,
+  "rows": 3,
+  "frameCount": 12,
+  "frameWidth": 384,
+  "frameHeight": 384,
+  "durationsMs": [
+    2000,
+    90,
+    90,
+    100,
+    650,
+    55,
+    95,
+    55,
+    600,
+    100,
+    100,
+    1600
+  ],
+  "actions": [
+    "head-turn",
+    "blink",
+    "listening"
+  ],
+  "mouthAnimation": false,
+  "approvedForRuntime": true,
+  "notes": "First animation study. Feet and outline may drift slightly between generated frames; review before applying to other characters.",
+  "registration": "Generated atlas rows sliced at transparent gutters; feet baseline aligned to y=364 without warping artwork."
+}

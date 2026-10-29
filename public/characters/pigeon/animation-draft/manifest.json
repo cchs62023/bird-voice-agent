@@ -1,0 +1,202 @@
+{
+  "status": "approved-and-connected",
+  "character": "pigeon",
+  "name": "Chirpy",
+  "source": "Twelve newly generated in-between drawings; original turnaround is unchanged.",
+  "atlas": "listen-atlas.webp",
+  "previewAtlas": "listen-preview.webp",
+  "columns": 4,
+  "rows": 3,
+  "frameCount": 12,
+  "frameWidth": 384,
+  "frameHeight": 384,
+  "durationsMs": [
+    1400,
+    75,
+    75,
+    90,
+    450,
+    50,
+    80,
+    50,
+    550,
+    90,
+    90,
+    1500
+  ],
+  "actions": [
+    "head-turn",
+    "blink",
+    "listening"
+  ],
+  "mouthAnimation": false,
+  "approvedForRuntime": true,
+  "registration": {
+    "method": "Slice transparent row gutters, translate only, feet baseline y=364. No artwork warping.",
+    "sourceRowCuts": [
+      0,
+      369,
+      732,
+      1086
+    ],
+    "frames": [
+      {
+        "frame": 0,
+        "offsetPx": [
+          11,
+          1
+        ],
+        "visibleBox": [
+          15,
+          19,
+          310,
+          363
+        ]
+      },
+      {
+        "frame": 1,
+        "offsetPx": [
+          11,
+          1
+        ],
+        "visibleBox": [
+          15,
+          19,
+          311,
+          363
+        ]
+      },
+      {
+        "frame": 2,
+        "offsetPx": [
+          11,
+          1
+        ],
+        "visibleBox": [
+          16,
+          19,
+          312,
+          363
+        ]
+      },
+      {
+        "frame": 3,
+        "offsetPx": [
+          11,
+          1
+        ],
+        "visibleBox": [
+          19,
+          18,
+          317,
+          363
+        ]
+      },
+      {
+        "frame": 4,
+        "offsetPx": [
+          11,
+          8
+        ],
+        "visibleBox": [
+          15,
+          8,
+          320,
+          356
+        ]
+      },
+      {
+        "frame": 5,
+        "offsetPx": [
+          11,
+          7
+        ],
+        "visibleBox": [
+          15,
+          7,
+          323,
+          357
+        ]
+      },
+      {
+        "frame": 6,
+        "offsetPx": [
+          11,
+          7
+        ],
+        "visibleBox": [
+          16,
+          7,
+          322,
+          357
+        ]
+      },
+      {
+        "frame": 7,
+        "offsetPx": [
+          11,
+          7
+        ],
+        "visibleBox": [
+          16,
+          8,
+          321,
+          357
+        ]
+      },
+      {
+        "frame": 8,
+        "offsetPx": [
+          11,
+          11
+        ],
+        "visibleBox": [
+          14,
+          6,
+          323,
+          353
+        ]
+      },
+      {
+        "frame": 9,
+        "offsetPx": [
+          11,
+          11
+        ],
+        "visibleBox": [
+          15,
+          7,
+          316,
+          353
+        ]
+      },
+      {
+        "frame": 10,
+        "offsetPx": [
+          11,
+          11
+        ],
+        "visibleBox": [
+          15,
+          8,
+          315,
+          353
+        ]
+      },
+      {
+        "frame": 11,
+        "offsetPx": [
+          11,
+          12
+        ],
+        "visibleBox": [
+          16,
+          8,
+          313,
+          352
+        ]
+      }
+    ]
+  },
+  "notes": "Review sample, not enabled in the voice runtime. Small contour changes remain between generated drawings."
+}

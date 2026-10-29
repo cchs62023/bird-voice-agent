@@ -1,199 +1,128 @@
-import { useState } from "react";
-import { useVoiceAgent } from "@cloudflare/voice/react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { characters, characterSessionName, type CharacterId } from "./characters";
+import { CharacterSession, type SessionSnapshot } from "./voice/session";
+import { BirdSprite } from "./animation/BirdSprite";
+import { characterDisplayPhase } from "./animation/phase";
+import "./character-motion.css";
+import { translations, formatText, loadLocale, saveLocale, localizeError, type Locale } from "./i18n";
 
-const birds = [
-  {
-    id: "sunny",
-    name: "小暖 Sunny",
-    emoji: "🐤",
-    personality: "溫柔陪伴"
-  },
-  {
-    id: "chirpy",
-    name: "啾啾 Chirpy",
-    emoji: "🐦",
-    personality: "活潑好奇"
-  },
-  {
-    id: "sage",
-    name: "阿墨 Sage",
-    emoji: "🦉",
-    personality: "沉穩思考"
-  },
-  {
-    id: "group",
-    name: "三鳥一起聊",
-    emoji: "🐤🐦🦉",
-    personality: "每輪兩隻，輪流回答"
-  }
-];
+type Selection = CharacterId | "group";
+const nicknames: Record<CharacterId, string> = { sparrow: "Sunny", pigeon: "Chirpy", "malayan-night-heron": "Sage" };
 
-function getBrowserId() {
+
+function browserIdentity() {
   try {
-    const existing = localStorage.getItem("three-birds-browser-id");
-    if (existing) return existing;
-
+    const key = "three-birds-browser-id";
+    const previous = localStorage.getItem(key);
+    if (previous && /^[a-zA-Z0-9-]+$/.test(previous)) return previous;
     const id = crypto.randomUUID();
-    localStorage.setItem("three-birds-browser-id", id);
+    localStorage.setItem(key, id);
     return id;
-  } catch {
-    return crypto.randomUUID();
-  }
+  } catch { return crypto.randomUUID(); }
 }
 
 export default function App() {
-  const [selected, setSelected] = useState("sunny");
-  const [browserId] = useState(getBrowserId);
-  const bird = birds.find((item) => item.id === selected) ?? birds[0];
-
+  const [browserId] = useState(browserIdentity);
+  const [locale, setLocale] = useState<Locale>(() => loadLocale({ getItem: (key) => localStorage.getItem(key) }));
+  const text = translations[locale];
+  useEffect(() => {
+    saveLocale({ setItem: (key, value) => localStorage.setItem(key, value) }, locale);
+    document.documentElement.lang = locale;
+    document.title = text.pageTitle;
+  }, [locale, text.pageTitle]);
+  const [selected, setSelected] = useState<Selection>("sparrow");
+  const [reference, setReference] = useState<CharacterId | null>(null);
+  const sessions = useRef<Partial<Record<Selection, CharacterSession>>>({});
+  function getSession(id: Selection) {
+    let session = sessions.current[id];
+    if (!session) {
+      const name = id === "group" ? `characters-group-v1--${browserId}--group` : characterSessionName(browserId, id);
+      session = new CharacterSession(name);
+      sessions.current[id] = session;
+    }
+    return session;
+  }
+  const session = getSession(selected);
+  const groupSession = getSession("group");
+  const groupState = useSyncExternalStore(groupSession.subscribe, groupSession.getSnapshot);
+  useEffect(() => {
+    const registry = sessions.current;
+    return () => { Object.values(registry).forEach((item) => item?.disconnect()); };
+  }, []);
+  function select(id: Selection) {
+    if (id === selected) return;
+    session.disconnect();
+    setSelected(id);
+  }
   return (
-    <main style={{
-      minHeight: "100vh",
-      background: "#f0f9ff",
-      color: "#1e293b",
-      padding: "32px 20px",
-      fontFamily: "system-ui, sans-serif"
-    }}>
-      <div style={{ maxWidth: 760, margin: "0 auto" }}>
-        <h1 style={{ fontSize: 30, fontWeight: 700 }}>
-          三隻小鳥陪你聊
-        </h1>
-        <p style={{ margin: "12px 0 24px" }}>
-          選一隻小鳥，用英文聊天。
-        </p>
-        <BirdRoom
-          key={bird.id}
-          bird={bird}
-          browserId={browserId}
-          onSelect={setSelected}
-        />
+    <main className="bird-app"><div className="bird-shell">
+      <header className="bird-header">
+        <div className="language-switch">
+          <button type="button" className="language-toggle" role="switch" aria-checked={locale === "zh-TW"}
+            aria-label="繁體中文介面 / Traditional Chinese interface"
+            onClick={() => setLocale((current) => current === "en" ? "zh-TW" : "en")}>
+            <span lang="en" className={locale === "en" ? "is-active" : ""}>ENG</span>
+            <span className="language-toggle-track" aria-hidden="true"><span className="language-toggle-thumb" /></span>
+            <span lang="zh-TW" className={locale === "zh-TW" ? "is-active" : ""}>繁中</span>
+          </button>
+        </div>
+        <span className="eyebrow">{text.eyebrow}</span>
+        <h1>{text.title}</h1>
+        <p>{text.intro}</p>
+        <span className="language-note">{text.voiceNote}</span>
+      </header>
+      <div className="character-grid" role="group" aria-label={text.chooseBird}>
+        {characters.map((bird) => <CharacterCard locale={locale} key={bird.id} id={bird.id} selected={selected === bird.id} session={getSession(bird.id)} groupState={selected === "group" ? groupState : null} onSelect={() => select(bird.id)} />)}
       </div>
+      <div className="mode-row"><p>{text.individualNote}</p><button className="quiet-button" aria-pressed={selected === "group"} onClick={() => select("group")}>{text.group}</button></div>
+      <Conversation locale={locale} key={selected} id={selected} session={session} onReference={() => { if (selected !== "group") setReference(selected); }} />
+      <footer>{text.footer}</footer>
+    </div>
+    {reference && <div className="reference-backdrop"><section role="dialog" aria-modal="true" aria-labelledby="reference-title" className="reference-dialog">
+      <h2 id="reference-title">{formatText(text.referenceTitle, { name: characters.find((bird) => bird.id === reference)?.[locale === "en" ? "englishName" : "name"] ?? "" })}</h2>
+      <p>{text.referenceNote}</p>
+      <img src={`/characters/${reference}/turnaround.png`} alt={text.referenceAlt} />
+      <button className="primary-button" autoFocus onClick={() => setReference(null)}>{text.closeReference}</button>
+    </section></div>}
     </main>
   );
 }
 
-function BirdRoom({ bird, browserId, onSelect }: {
-  bird: (typeof birds)[number];
-  browserId: string;
-  onSelect: (id: string) => void;
-}) {
-  const [starting, setStarting] = useState(false);
-  const [startError, setStartError] = useState("");
+function CharacterCard({ id, selected, session, groupState, onSelect, locale }: { locale: Locale; id: CharacterId; selected: boolean; session: CharacterSession; groupState: SessionSnapshot | null; onSelect: () => void; }) {
+  const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
+  const bird = characters.find((character) => character.id === id)!;
+  const phase = characterDisplayPhase(id, state, groupState);
+  const text = translations[locale];
+  const species = locale === "en" ? bird.englishName : bird.name;
+  return <button className={`character-card ${selected ? "is-selected" : ""} phase-${phase}`} aria-pressed={selected} onClick={onSelect}>
+    <div className="character-art"><BirdSprite id={id} phase={phase} name={`${nicknames[id]}, ${species}`} fallback={bird.image} unavailableText={text.animationUnavailable} /></div>
+    <span className="character-species">{species}</span><strong>{nicknames[id]}</strong>
+    <span className={`phase-label ${phase === "speaking" ? "is-speaking" : ""}`}>{text.phases[phase]}</span>
+  </button>;
+}
 
-  const voice = useVoiceAgent({
-    agent: "BirdVoiceAgent",
-    name: `v2--${browserId}--${bird.id}`
-  });
-
-  const labels = {
-    idle: "尚未開始聊天",
-    listening: "正在聽你說話",
-    thinking: "正在思考",
-    speaking: "正在回答你"
-  };
-
-  async function start() {
-    setStarting(true);
-    setStartError("");
-    try {
-      await voice.startCall();
-    } catch (error) {
-      setStartError(error instanceof Error ? error.message : "無法啟動麥克風");
-    } finally {
-      setStarting(false);
-    }
-  }
-
-  function select(id: string) {
-    if (id === bird.id || starting) return;
-    voice.endCall();
-    onSelect(id);
-  }
-
-  return (
-    <>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        {birds.map((item) => (
-          <button
-            key={item.id}
-            disabled={starting}
-            aria-pressed={item.id === bird.id}
-            onClick={() => select(item.id)}
-            style={{
-              flex: "1 1 180px",
-              padding: 20,
-              borderRadius: 16,
-              border: item.id === bird.id ? "2px solid #334155" : "2px solid #e2e8f0",
-              background: item.id === bird.id ? "#fff3c4" : "white",
-              cursor: "pointer"
-            }}
-          >
-            <div style={{ fontSize: 44 }}>{item.emoji}</div>
-            <strong>{item.name}</strong>
-            <div>{item.personality}</div>
-          </button>
-        ))}
-      </div>
-
-      <section style={{
-        marginTop: 24,
-        padding: 28,
-        background: "white",
-        borderRadius: 24,
-        textAlign: "center"
-      }}>
-        <div style={{ fontSize: 88 }}>{bird.emoji}</div>
-        <h2>{bird.name}</h2>
-        <p style={{ margin: "12px 0" }}>
-          {voice.connected ? "已連線" : "連線中"} · {labels[voice.status]}
-        </p>
-
-        <div style={{ display: "flex", justifyContent: "center", gap: 16 }}>
-          {voice.status === "idle" ? (
-            <button
-              onClick={start}
-              disabled={!voice.connected || starting}
-              style={{ padding: 12, border: "1px solid #cbd5e1", borderRadius: 12 }}
-            >
-              {starting ? "啟動中…" : "開始聊天"}
-            </button>
-          ) : (
-            <>
-              <button onClick={() => voice.toggleMute()} style={{ padding: 12 }}>
-                {voice.isMuted ? "開啟麥克風" : "靜音"}
-              </button>
-              <button onClick={() => voice.endCall()} style={{ padding: 12 }}>
-                結束聊天
-              </button>
-            </>
-          )}
-        </div>
-
-        <p style={{ marginTop: 20 }}>
-          試著說：I had a long day. Can we talk?
-        </p>
-        <p>切換小鳥後，請再點「開始聊天」。</p>
-        {(voice.error || startError) && (
-          <p role="alert" style={{ color: "#b91c1c" }}>
-            {voice.error || startError}
-          </p>
-        )}
-      </section>
-
-      <section style={{ marginTop: 24 }}>
-        <h2>{bird.name}的聊天紀錄</h2>
-        {voice.transcript.map((message, index) => (
-          <p key={index} style={{
-            background: "white", padding: 16, borderRadius: 12, marginTop: 12
-          }}>
-            <strong>{message.role === "user" ? "你" : bird.name}：</strong>
-            {message.text}
-          </p>
-        ))}
-        {voice.interimTranscript && (
-          <p>正在辨識：{voice.interimTranscript}</p>
-        )}
-      </section>
-    </>
-  );
+function Conversation({ id, session, onReference, locale }: { locale: Locale; id: Selection; session: CharacterSession; onReference: () => void; }) {
+  const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
+  const text = translations[locale];
+  const name = id === "group" ? text.groupName : nicknames[id];
+  const error = state.error ? localizeError(state.error, locale) : null;
+  useEffect(() => { session.connect(); return () => session.disconnect(); }, [session]);
+  return <section className="conversation" aria-label={formatText(text.conversationLabel, { name })}>
+    <div className="conversation-heading"><div><span className="eyebrow">{text.conversationEyebrow}</span><h2>{formatText(text.conversationTitle, { name })}</h2></div><span className={`connection ${state.connected ? "online" : ""}`}>{state.connected ? text.connected : text.disconnected}</span></div>
+    {id === "group" && <p className="group-note">{text.groupNote}</p>}
+    <div className="call-status" role="status">{state.starting ? text.openingMic : text.phases[state.phase]}</div>
+    <div className="call-actions">
+      {!state.active ? <button className="primary-button" disabled={!state.connected || state.starting} onClick={() => void session.start()}>{state.starting ? text.starting : text.start}</button>
+        : <><button className="secondary-button" onClick={() => session.toggleMute()}>{state.muted ? text.unmute : text.mute}</button><button className="primary-button" onClick={() => session.stop()}>{text.end}</button></>}
+      <button className="quiet-button" onClick={() => session.retry()} disabled={state.starting}>{text.reconnect}</button>
+      {id !== "group" && <button className="quiet-button" onClick={onReference}>{text.viewReference}</button>}
+    </div>
+    {error && <div className="error-message" role="alert">{error.message}<button onClick={() => session.retry()}>{text.retry}</button>{error.details && <details><summary>{text.technicalDetails}</summary><p>{error.details}</p></details>}</div>}
+    <p className="conversation-hint">{text.hint}</p>
+    <div className="transcript" role="log" aria-label={formatText(text.transcriptLabel, { name })}>
+      {!state.messages.length && <p className="empty-transcript">{text.emptyTranscript}</p>}
+      {state.messages.map((message, index) => <div key={index} className={`message message-${message.role}`}><strong>{message.role === "user" ? text.you : name}</strong><p>{message.text}</p></div>)}
+    </div>
+    {state.interim && <p className="interim">{formatText(text.recognizing, { text: state.interim })}</p>}
+  </section>;
 }

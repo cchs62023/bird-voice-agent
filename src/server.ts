@@ -1,3 +1,7 @@
+import { streamGroupReplies, type GroupSpeaker } from "./voice/group-replies";
+import { characterFromSession } from "./characters";
+import { characterFromSpeakerLabel, encodeCharacterAudio } from "./voice/audio-envelope";
+import { characterAgentConfig } from "./character-config.server";
 import { Agent, routeAgentRequest } from "agents";
 import {
   withVoice,
@@ -41,30 +45,12 @@ export class ChatAgent extends AIChatAgent<Env> {
 // ── 三隻小鳥的角色與音色 ────────────────────────────────
 
 const BIRD_SETTINGS = {
-  sunny: {
-    name: "Sunny",
-    speaker: "asteria",
-    personality:
-      "You are a warm, patient little bird. " +
-      "Listen kindly and acknowledge feelings before offering advice. " +
-      "Offer gentle companionship without exaggerated praise."
-  },
-  chirpy: {
-    name: "Chirpy",
-    speaker: "luna",
-    personality:
-      "You are a playful, curious little bird. " +
-      "Bring gentle humor and enjoy small discoveries. " +
-      "Be considerate when the user is upset; do not force cheerfulness."
-  },
-  sage: {
-    name: "Sage",
-    speaker: "orion",
-    personality:
-      "You are a calm, thoughtful owl. " +
-      "Help the user organize thoughts and understand choices. " +
-      "Offer one small practical next step when advice is wanted."
-  }
+  sunny: { name: "Sunny", speaker: characterAgentConfig.sparrow.voice.id,
+    personality: characterAgentConfig.sparrow.persona },
+  chirpy: { name: "Chirpy", speaker: characterAgentConfig.pigeon.voice.id,
+    personality: characterAgentConfig.pigeon.persona },
+  sage: { name: "Sage", speaker: characterAgentConfig["malayan-night-heron"].voice.id,
+    personality: characterAgentConfig["malayan-night-heron"].persona }
 } as const;
 
 type BirdId = keyof typeof BIRD_SETTINGS;
@@ -81,6 +67,20 @@ class BirdTTS {
     text: string,
     signal?: AbortSignal
   ): Promise<ArrayBuffer | null> {
+    const startedAt = Date.now();
+    let outcome = "completed";
+    try {
+      return await this.synthesizeAudio(text, signal);
+    } catch (error) {
+      outcome = "failed";
+      throw error;
+    } finally {
+      console.info(JSON.stringify({ event: "bird_tts_end", speaker: this.speaker,
+        elapsedMs: Date.now() - startedAt, outcome: signal?.aborted ? "aborted" : outcome }));
+    }
+  }
+
+  private async synthesizeAudio(text: string, signal?: AbortSignal): Promise<ArrayBuffer | null> {
     if (!text.trim() || signal?.aborted) return null;
 
     const output: unknown = await this.ai.run(
@@ -167,20 +167,54 @@ const VoiceAgentBase = withVoice(Agent, {
 export class BirdVoiceAgent extends VoiceAgentBase<Env> {
   transcriber = new WorkersAIFluxSTT(this.env.AI);
 
+  afterSynthesize(audio: ArrayBuffer | null, text: string): ArrayBuffer | null {
+    if (!audio?.byteLength) return null;
+    if (!this.name.endsWith("--group")) return audio;
+    const speaker = characterFromSpeakerLabel(text);
+    if (!speaker) throw new Error("群聊音訊缺少角色名稱。");
+    return encodeCharacterAudio(audio, speaker);
+  }
+
   tts: BirdTTS | GroupBirdTTS = new BirdTTS(
     this.env.AI,
     "asteria"
   );
 
   private getBirdId(): BirdId {
+    const characterId = characterFromSession(this.name);
+    if (characterId) return characterAgentConfig[characterId].legacyId;
     if (this.name.endsWith("--chirpy")) return "chirpy";
     if (this.name.endsWith("--sage")) return "sage";
 
     return "sunny";
   }
 
+  private ensureCharacterState() {
+    const id = characterFromSession(this.name);
+    if (!id) return;
+    const config = characterAgentConfig[id];
+    this.sql`CREATE TABLE IF NOT EXISTS cf_character_state (
+      character_id TEXT PRIMARY KEY,
+      voice_id TEXT NOT NULL,
+      language TEXT NOT NULL,
+      call_count INTEGER NOT NULL DEFAULT 0,
+      turn_count INTEGER NOT NULL DEFAULT 0
+    )`;
+    this.sql`INSERT INTO cf_character_state (character_id, voice_id, language)
+      VALUES (${id}, ${config.voice.id}, ${config.language})
+      ON CONFLICT(character_id) DO UPDATE SET
+        voice_id=excluded.voice_id, language=excluded.language`;
+  }
+
   beforeCallStart() {
-    if (this.name.endsWith("--group")) {
+    this.ensureCharacterState();
+    const characterId = characterFromSession(this.name);
+    if (characterId) {
+      const config = characterAgentConfig[characterId];
+      this.tts = new BirdTTS(this.env.AI, config.voice.id);
+      this.sql`UPDATE cf_character_state SET call_count=call_count+1
+        WHERE character_id=${characterId}`;
+    } else if (this.name.endsWith("--group")) {
       this.tts = new GroupBirdTTS(this.env.AI);
     } else {
       const bird = BIRD_SETTINGS[this.getBirdId()];
@@ -202,7 +236,16 @@ export class BirdVoiceAgent extends VoiceAgentBase<Env> {
       return this.groupReplies(transcript, context);
     }
 
-    const bird = BIRD_SETTINGS[this.getBirdId()];
+    const characterId = characterFromSession(this.name);
+    this.ensureCharacterState();
+    if (characterId) {
+      this.sql`UPDATE cf_character_state SET turn_count=turn_count+1
+        WHERE character_id=${characterId}`;
+    }
+    const config = characterId ? characterAgentConfig[characterId] : null;
+    const bird = config
+      ? { name: config.name, speaker: config.voice.id, personality: config.persona }
+      : BIRD_SETTINGS[this.getBirdId()];
 
     const workersai = createWorkersAI({
       binding: this.env.AI
@@ -263,90 +306,54 @@ Do not invent memories or facts.
       binding: this.env.AI
     });
 
-    let previousReply = "";
-
-    for (const [index, id] of pair.entries()) {
-      if (context.signal.aborted) return;
-
-      const bird = BIRD_SETTINGS[id];
-
-      const instruction =
-        index === 0
-          ? "Respond directly to the user and leave room for another bird."
-          : `Another bird just said: ${previousReply}
-Add a different, useful perspective.
-Do not repeat that reply.
-Do not ask another question.`;
-
-      const result = streamText({
-        model: workersai(CHAT_MODEL),
-        system: `
-Your name is ${bird.name}.
-${bird.personality}
-
-You are an AI bird companion in a shared conversation.
-Your current identity overrides names in earlier messages.
-Speak English.
-Give exactly one short sentence, around 8 to 20 words.
-Do not write your name or a speaker label.
-Do not use Markdown, emojis, lists, or stage directions.
-Avoid abbreviations, URLs, and numbered lists.
-Do not invent memories or facts.
-
-${instruction}
-        `,
-        messages: [
-          ...context.messages.map((message) => ({
-            role: message.role as "user" | "assistant",
-            content: message.content
-          })),
-          {
-            role: "user" as const,
-            content: transcript
-          }
-        ],
-        abortSignal: context.signal
-      });
-
-      let buffer = "";
-      let fullReply = "";
-
+    const speakers = pair.map((id) => BIRD_SETTINGS[id].name) as [GroupSpeaker, GroupSpeaker];
+    const startedAt = Date.now();
+    const turnId = crypto.randomUUID();
+    let firstToken = true;
+    let outcome = "completed";
+    const timing = (event: string, extra: Record<string, string | number> = {}) => {
+      console.info(JSON.stringify({ event, turnId, elapsedMs: Date.now() - startedAt, ...extra }));
+    };
+    timing("bird_group_start");
+    const result = streamText({
+      model: workersai(CHAT_MODEL),
+      system: `You write a short spoken conversation between two AI bird companions.
+First speaker: ${speakers[0]}. ${BIRD_SETTINGS[pair[0]].personality}
+Second speaker: ${speakers[1]}. ${BIRD_SETTINGS[pair[1]].personality}
+Respond to the user in English, naturally and directly.
+The second bird adds a different useful perspective to the first bird's reply.
+Each bird speaks exactly one short sentence of 8 to 16 words.
+Ask at most one question across both replies.
+Do not invent memories or facts. Do not use abbreviations or decimal numbers.
+Return exactly two lines in this order, with no introduction or blank lines:
+Speaker ${speakers[0]}: <first bird's sentence>
+Speaker ${speakers[1]}: <second bird's sentence>
+Keep each complete sentence on its own line. End each sentence with punctuation.
+Do not include Markdown, emojis, lists, or stage directions.
+Only the two specified birds speak, regardless of names in the conversation history.`,
+      messages: [
+        ...context.messages.map((message) => ({
+          role: message.role as "user" | "assistant",
+          content: message.content
+        })),
+        { role: "user" as const, content: transcript }
+      ],
+      abortSignal: context.signal
+    });
+    const tokens = async function* () {
       for await (const token of result.textStream) {
-        if (context.signal.aborted) return;
-
-        buffer += token;
-        fullReply += token;
-
-        // 為每個完整句子加上角色標記。
-        while (true) {
-          const match = buffer.match(
-            /^([\s\S]*?[.!?])\s+/
-          );
-
-          if (!match) break;
-
-          const sentence = match[1].trim();
-          buffer = buffer.slice(match[0].length);
-
-          if (sentence) {
-            yield `Speaker ${bird.name}: ${sentence}\n`;
-          }
-        }
+        if (token && firstToken) { timing("bird_group_first_text"); firstToken = false; }
+        yield token;
       }
-
-      if (context.signal.aborted) return;
-
-      const remaining = buffer.trim();
-
-      if (remaining) {
-        const ending = /[.!?]$/.test(remaining)
-          ? ""
-          : ".";
-
-        yield `Speaker ${bird.name}: ${remaining}${ending}\n`;
-      }
-
-      previousReply = `${bird.name}: ${fullReply.trim()}`;
+    };
+    try {
+      yield* streamGroupReplies(tokens, speakers, context.signal, (speaker) => timing("bird_group_reply_ready", { speaker }));
+    } catch (error) {
+      outcome = "failed";
+      timing("bird_group_error", { errorType: error instanceof Error ? error.name : "unknown" });
+      throw error;
+    } finally {
+      timing("bird_group_text_end", { outcome: context.signal.aborted ? "aborted" : outcome });
     }
   }
 }

@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "description": "Project-neutral character asset manifest; not a voice-provider API schema. Paths resolve relative to this JSON file. Null fields need project-specific configuration.",
+  "style": {
+    "name": "draw-gentle-nature-anime",
+    "rules": [
+      "Fine organic muted brown-charcoal contours",
+      "Broad matte flat colors and restrained cel shadows",
+      "Sparse feather details, understated eyes and expressions",
+      "Preserve species anatomy and approved character identity"
+    ]
+  },
+  "characters": [
+    {
+      "id": "sparrow",
+      "display_name": "麻雀",
+      "english_name": "Sparrow",
+      "reference_sheet": "assets/characters/sparrow/turnaround.png",
+      "reference_metadata": {
+        "purpose": "character-design-reference",
+        "format": "png",
+        "width": 1536,
+        "height": 1024,
+        "transparent": false,
+        "views_left_to_right": [
+          "front",
+          "front_three_quarter",
+          "side",
+          "back_three_quarter",
+          "back"
+        ],
+        "sha256": "fa1d2ce7ff19b14901e41b3aba79d2e38d3a120cd56ac9bc099416e3e15862e3"
+      },
+      "identity_anchors": "栗色頭頂、白頰黑斑、深色喉斑、暖棕色翅膀",
+      "agent": {
+        "id": "sparrow",
+        "persona_prompt": null,
+        "voice_provider": null,
+        "voice_id": null,
+        "language": null,
+        "conversation_state_scope": "per-agent"
+      },
+      "runtime_assets": {
+        "idle": null,
+        "listening": null,
+        "thinking": null,
+        "speaking": null
+      },
+      "status": "reference-ready; voice and animation not configured"
+    },
+    {
+      "id": "pigeon",
+      "display_name": "鴿子",
+      "english_name": "Pigeon",
+      "reference_sheet": "assets/characters/pigeon/turnaround.png",
+      "reference_metadata": {
+        "purpose": "character-design-reference",
+        "format": "png",
+        "width": 1536,
+        "height": 1024,
+        "transparent": false,
+        "views_left_to_right": [
+          "front",
+          "front_three_quarter",
+          "side",
+          "back_three_quarter",
+          "back"
+        ],
+        "sha256": "e642a07bb6ab8706bc3a6521e6c30a50573540d189e0fe948d246680afe332fe"
+      },
+      "identity_anchors": "灰藍色身體、低彩度綠紫頸斑、雙翼黑帶、粉紅腳",
+      "agent": {
+        "id": "pigeon",
+        "persona_prompt": null,
+        "voice_provider": null,
+        "voice_id": null,
+        "language": null,
+        "conversation_state_scope": "per-agent"
+      },
+      "runtime_assets": {
+        "idle": null,
+        "listening": null,
+        "thinking": null,
+        "speaking": null
+      },
+      "status": "reference-ready; voice and animation not configured"
+    },
+    {
+      "id": "malayan-night-heron",
+      "display_name": "黑冠麻鷺",
+      "english_name": "Malayan Night Heron",
+      "reference_sheet": "assets/characters/malayan-night-heron/turnaround.png",
+      "reference_metadata": {
+        "purpose": "character-design-reference",
+        "format": "png",
+        "width": 1536,
+        "height": 1024,
+        "transparent": false,
+        "views_left_to_right": [
+          "front",
+          "front_three_quarter",
+          "side",
+          "back_three_quarter",
+          "back"
+        ],
+        "sha256": "dae4c55609265b69bea11dac7d269d418780e760cd19f7c98589747e9b33bdcd"
+      },
+      "identity_anchors": "黑色冠羽、栗褐色頸背、淡色腹部、黃綠色腿腳",
+      "agent": {
+        "id": "malayan-night-heron",
+        "persona_prompt": null,
+        "voice_provider": null,
+        "voice_id": null,
+        "language": null,
+        "conversation_state_scope": "per-agent"
+      },
+      "runtime_assets": {
+        "idle": null,
+        "listening": null,
+        "thinking": null,
+        "speaking": null
+      },
+      "status": "reference-ready; voice and animation not configured"
+    }
+  ]
+}

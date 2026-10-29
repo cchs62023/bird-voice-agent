@@ -1,0 +1,7 @@
+.character-art { position: relative; isolation: isolate; }
+.character-art::after { content: ""; position: absolute; z-index: -1; width: 38%; height: 9px; bottom: 7%; left: 31%; background: #665d4320; border-radius: 50%; filter: blur(7px); pointer-events: none; }
+.bird-sprite { display: block; width: 100%; height: 100%; object-fit: contain; }
+.bird-sprite[hidden] { display: none; }
+.bird-sprite-fallback { width: 100%; height: 100%; object-fit: contain; }
+.phase-speaking.character-card { border-color: #6f805b; background: #f7faef; }
+.animation-unavailable { position: absolute; bottom: 0; font-size: 10px; color: #8a806b; }
