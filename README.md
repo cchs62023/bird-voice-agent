@@ -107,7 +107,7 @@ Additional tests cover animation timer cleanup/reduced motion, per-audio group i
 
 ### Interface language
 
-The header includes English and 繁體中文 buttons. On first use the interface follows the first supported browser language, falling back to English. A manual choice is remembered in `three-birds-ui-language`; blocked browser storage still permits switching for the current visit. Page title, document language, character species names, controls, statuses, reference views, accessibility labels and application error explanations switch together. Unknown provider errors remain available under localized technical details.
+The header includes one accessible language toggle labeled ENG / 繁中. On first use the interface defaults to English regardless of browser language. The switch supports keyboard activation and exposes its state through `role="switch"` and `aria-checked`. A manual choice is remembered in `three-birds-ui-language`; blocked browser storage still permits switching for the current visit. Page title, document language, character species names, controls, statuses, reference views, accessibility labels and application error explanations switch together. Unknown provider errors remain available under localized technical details.
 
 This is interface translation. It does not translate recorded dialogue or change the English STT/TTS and persona prompts. Language changes do not change agent identities, reconnect sessions, stop playback or reset animations. To verify after deployment, switch in both directions during a call, check the group and reference views, reload to confirm persistence, and check the layout on a narrow screen.
 

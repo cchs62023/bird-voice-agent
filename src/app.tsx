@@ -23,7 +23,7 @@ function browserIdentity() {
 
 export default function App() {
   const [browserId] = useState(browserIdentity);
-  const [locale, setLocale] = useState<Locale>(() => loadLocale({ getItem: (key) => localStorage.getItem(key) }, navigator.languages));
+  const [locale, setLocale] = useState<Locale>(() => loadLocale({ getItem: (key) => localStorage.getItem(key) }));
   const text = translations[locale];
   useEffect(() => {
     saveLocale({ setItem: (key, value) => localStorage.setItem(key, value) }, locale);
@@ -57,9 +57,14 @@ export default function App() {
   return (
     <main className="bird-app"><div className="bird-shell">
       <header className="bird-header">
-        <div className="language-switch" role="group" aria-label="Language / 語言">
-          <button type="button" lang="en" aria-pressed={locale === "en"} onClick={() => setLocale("en")}>English</button>
-          <button type="button" lang="zh-TW" aria-pressed={locale === "zh-TW"} onClick={() => setLocale("zh-TW")}>繁體中文</button>
+        <div className="language-switch">
+          <button type="button" className="language-toggle" role="switch" aria-checked={locale === "zh-TW"}
+            aria-label="繁體中文介面 / Traditional Chinese interface"
+            onClick={() => setLocale((current) => current === "en" ? "zh-TW" : "en")}>
+            <span lang="en" className={locale === "en" ? "is-active" : ""}>ENG</span>
+            <span className="language-toggle-track" aria-hidden="true"><span className="language-toggle-thumb" /></span>
+            <span lang="zh-TW" className={locale === "zh-TW" ? "is-active" : ""}>繁中</span>
+          </button>
         </div>
         <span className="eyebrow">{text.eyebrow}</span>
         <h1>{text.title}</h1>

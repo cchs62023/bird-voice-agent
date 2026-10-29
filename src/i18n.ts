@@ -104,15 +104,11 @@ export function formatText(template: string, values: Record<string, string>) {
   return template.replace(/\{(\w+)\}/g, (placeholder, key: string) => values[key] ?? placeholder);
 }
 
-export function loadLocale(storage: Pick<Storage, "getItem">, languages: readonly string[]): Locale {
+export function loadLocale(storage: Pick<Storage, "getItem">): Locale {
   try {
     const saved = storage.getItem(localeStorageKey);
     if (saved === "en" || saved === "zh-TW") return saved;
   } catch { /* Browsing without storage still supports the language switch. */ }
-  for (const language of languages) {
-    if (/^zh(?:-|$)/i.test(language)) return "zh-TW";
-    if (/^en(?:-|$)/i.test(language)) return "en";
-  }
   return "en";
 }
 

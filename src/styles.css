@@ -8,9 +8,13 @@ button:focus-visible { outline: 3px solid #637b55; outline-offset: 5px; }
 .bird-app { min-height: 100vh; background: radial-gradient(ellipse at top, #eef1e3 0%, #f7f5ec 65%); padding: 56px 24px 24px; }
 .bird-shell { max-width: 1060px; margin: auto; }
 .bird-header { text-align: center; margin-bottom: 34px; }
-.language-switch { display: flex; justify-content: flex-end; gap: 4px; flex-wrap: wrap; margin-bottom: 24px; }
-.language-switch button { border: 1px solid #dedfce; border-radius: 20px; padding: 8px 14px; background: #fffdf4; color: #626950; font-size: 13px; min-height: 44px; }
-.language-switch button[aria-pressed="true"] { background: #6f805b; border-color: #6f805b; color: white; }
+.language-switch { display: flex; justify-content: flex-end; margin-bottom: 24px; }
+.language-toggle { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 4px; border: 0; border-radius: 8px; background: transparent; color: #969582; font-size: 12px; font-weight: 500; }
+.language-toggle .is-active { color: #536542; font-weight: 700; }
+.language-toggle-track { display: block; position: relative; width: 48px; height: 28px; border-radius: 20px; background: #6f805b; flex-shrink: 0; }
+.language-toggle-thumb { position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: #fffdf4; box-shadow: 0 1px 3px #344d2e33; transition: transform .18s ease; }
+.language-toggle[aria-checked="true"] .language-toggle-thumb { transform: translateX(20px); }
+@media (prefers-reduced-motion: reduce) { .language-toggle-thumb { transition: none; } }
 .eyebrow { font-size: 11px; letter-spacing: .2em; color: #7c8169; }
 .bird-header h1 { font-family: Georgia, "Noto Serif TC", serif; font-size: clamp(32px, 5vw, 48px); font-weight: 500; margin: 12px 0 16px; }
 .bird-header p { color: #75735f; line-height: 1.8; }

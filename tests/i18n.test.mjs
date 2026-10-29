@@ -2,23 +2,21 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { loadLocale, saveLocale, localeStorageKey, localizeError } from "../src/i18n.ts";
 
-test("an explicit UI language survives reload and takes priority over browser language", () => {
+test("English is the default and an explicit UI language survives reload", () => {
   const data = new Map();
   const storage = { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) };
-  assert.equal(loadLocale(storage, ["en-US"]), "en");
+  assert.equal(loadLocale(storage), "en");
   saveLocale(storage, "zh-TW");
-  assert.equal(loadLocale(storage, ["en-US"]), "zh-TW");
+  assert.equal(loadLocale(storage), "zh-TW");
   saveLocale(storage, "en");
-  assert.equal(loadLocale(storage, ["zh-Hant-TW"]), "en");
+  assert.equal(loadLocale(storage), "en");
   storage.setItem(localeStorageKey, "invalid");
-  assert.equal(loadLocale(storage, ["zh-Hant-TW"]), "zh-TW");
+  assert.equal(loadLocale(storage), "en");
 });
 
 test("blocked browser storage does not prevent switching languages", () => {
   const blocked = { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("blocked"); } };
-  assert.equal(loadLocale(blocked, ["fr-FR", "en-GB"]), "en");
-  assert.equal(loadLocale(blocked, ["zh-HK"]), "zh-TW");
-  assert.equal(loadLocale(blocked, []), "en");
+  assert.equal(loadLocale(blocked), "en");
   assert.doesNotThrow(() => saveLocale(blocked, "zh-TW"));
 });
 
